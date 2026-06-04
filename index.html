@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>网球教练工作台</title>
+<style>
+  :root {
+    --green: #4CAF50;
+    --yellow: #FFB300;
+    --red: #E53935;
+    --bg: #f5f5f5;
+    --card: #fff;
+    --text: #333;
+    --muted: #999;
+    --border: #e0e0e0;
+    --shadow: 0 2px 8px rgba(0,0,0,0.08);
+    --radius: 12px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--text); line-height:1.6; }
+  .app { max-width: 480px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; }
+
+  /* Header */
+  .header { background: linear-gradient(135deg, #1a237e 0%, #283593 100%); color:#fff; padding:20px; text-align:center; }
+  .header h1 { font-size:20px; margin-bottom:4px; }
+  .header .sub { font-size:13px; opacity:0.8; }
+
+  /* Tabs */
+  .tabs { display:flex; background:var(--card); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; }
+  .tab { flex:1; text-align:center; padding:14px 0; font-size:14px; cursor:pointer; border-bottom:2px solid transparent; transition:all 0.2s; color:var(--muted); }
+  .tab.active { color: #283593; border-bottom-color: #283593; font-weight:600; }
+
+  /* Content */
+  .content { flex:1; padding:16px; }
+  .page { display:none; }
+  .page.active { display:block; }
+
+  /* Cards */
+  .card { background:var(--card); border-radius:var(--radius); padding:16px; margin-bottom:12px; box-shadow:var(--shadow); }
+  .card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+  .card-header h3 { font-size:16px; }
+  .badge { display:inline-block; padding:2px 10px; border-radius:20px; font-size:12px; font-weight:600; }
+  .badge-green { background:#E8F5E9; color:#2E7D32; }
+  .badge-yellow { background:#FFF8E1; color:#F57F17; }
+  .badge-red { background:#FFEBEE; color:#C62828; }
+
+  /* Buttons */
+  .btn { display:inline-flex; align-items:center; gap:4px; padding:8px 16px; border-radius:8px; border:none; font-size:14px; cursor:pointer; transition:all 0.15s; font-family:inherit; }
+  .btn-primary { background:#283593; color:#fff; }
+  .btn-primary:hover { background:#1a237e; }
+  .btn-outline { background:var(--card); border:1px solid var(--border); color:var(--text); }
+  .btn-outline:hover { background:#f5f5f5; }
+  .btn-sm { padding:4px 10px; font-size:12px; }
+  .btn-danger { background:var(--red); color:#fff; }
+  .btn-danger:hover { opacity:0.9; }
+  .btn-success { background:var(--green); color:#fff; }
+  .btn-block { width:100%; justify-content:center; }
+
+  /* Forms */
+  .form-group { margin-bottom:12px; }
+  .form-group label { display:block; font-size:13px; font-weight:600; margin-bottom:4px; color:var(--muted); }
+  .form-group input, .form-group textarea, .form-group select { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; transition:border-color 0.2s; }
+  .form-group input:focus, .form-group textarea:focus { outline:none; border-color:#283593; }
+  .form-group textarea { resize:vertical; min-height:60px; }
+  .form-row { display:flex; gap:8px; }
+  .form-row > * { flex:1; }
+
+  /* Student list */
+  .student-card { display:flex; align-items:center; gap:12px; }
+  .avatar { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700; color:#fff; flex-shrink:0; }
+  .student-info { flex:1; min-width:0; }
+  .student-info .name { font-weight:600; font-size:15px; }
+  .student-info .meta { font-size:12px; color:var(--muted); margin-top:2px; }
+  .lesson-count { text-align:center; flex-shrink:0; }
+  .lesson-count .num { font-size:22px; font-weight:700; }
+  .lesson-count .num.warn { color:var(--yellow); }
+  .lesson-count .num.danger { color:var(--red); }
+  .lesson-count .label { font-size:11px; color:var(--muted); }
+
+  /* Modal */
+  .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100; align-items:center; justify-content:center; }
+  .modal-bg.show { display:flex; }
+  .modal { background:var(--card); border-radius:var(--radius); padding:20px; width:90%; max-width:400px; max-height:85vh; overflow-y:auto; }
+  .modal h3 { margin-bottom:16px; font-size:18px; }
+
+  /* Radar chart */
+  .radar-wrap { display:flex; justify-content:center; padding:10px 0; }
+  canvas { max-width:100%; }
+
+  /* Empty state */
+  .empty { text-align:center; padding:40px 20px; color:var(--muted); }
+  .empty .icon { font-size:48px; margin-bottom:12px; }
+  .empty p { font-size:14px; }
+
+  /* Log */
+  .log-item { padding:12px 0; border-bottom:1px solid var(--border); }
+  .log-item:last-child { border-bottom:none; }
+  .log-item .log-date { font-size:12px; color:var(--muted); }
+  .log-item .log-content { font-size:14px; margin-top:4px; }
+  .log-item .log-meta { font-size:12px; color:var(--muted); margin-top:2px; }
+  .tag { display:inline-block; padding:1px 8px; border-radius:10px; font-size:11px; background:#E8EAF6; color:#283593; margin-right:4px; }
+
+  /* Stats */
+  .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  .stat-card { background:var(--card); border-radius:var(--radius); padding:14px; box-shadow:var(--shadow); text-align:center; }
+  .stat-card .stat-num { font-size:28px; font-weight:700; color:#283593; }
+  .stat-card .stat-label { font-size:12px; color:var(--muted); margin-top:2px; }
+
+  .toast { position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:10px 20px; border-radius:20px; font-size:14px; z-index:200; opacity:0; transition:opacity 0.3s; pointer-events:none; }
+  .toast.show { opacity:1; }
+
+  /* Rating slider */
+  .rating-item { background:#fafafa; border-radius:8px; padding:8px 10px; }
+  .rating-item > label { font-size:12px; font-weight:600; color:var(--muted); display:block; margin-bottom:4px; }
+  .rating-row { display:flex; align-items:center; gap:8px; }
+  .rating-row input[type=range] { flex:1; accent-color:#283593; }
+  .rating-val { width:24px; height:24px; border-radius:50%; background:#283593; color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>🎾 网球教练工作台</h1>
+    <div class="sub">学员管理 · 上课记录 · 进度追踪</div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" data-tab="students">👥 学员</div>
+    <div class="tab" data-tab="lesson">📝 记课</div>
+    <div class="tab" data-tab="board">📊 看板</div>
+  </div>
+  <div class="content" id="content">
+    <!-- 学员列表页 -->
+    <div class="page active" id="page-students">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <span style="font-size:14px; color:var(--muted);" id="student-count">共 0 名学员</span>
+        <button class="btn btn-primary" onclick="showStudentModal()">+ 添加学员</button>
+      </div>
+      <div id="student-list"></div>
+      <div class="empty" id="empty-students">
+        <div class="icon">🏸</div>
+        <p>还没有学员，点击上方按钮添加</p>
+      </div>
+    </div>
+
+    <!-- 记课页 -->
+    <div class="page" id="page-lesson">
+      <div class="card" id="lesson-form-card">
+        <h3 style="margin-bottom:12px;">快速记课</h3>
+        <div class="form-group">
+          <label>选择学员</label>
+          <select id="lesson-student" style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
+            <option value="">-- 请选择学员 --</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>日期</label>
+          <input type="date" id="lesson-date">
+        </div>
+        <div class="form-group">
+          <label>训练内容</label>
+          <textarea id="lesson-content" placeholder="例如：正手底线对拉、发球练习、截击训练"></textarea>
+        </div>
+        <div class="form-group">
+          <label>技术评分（可选，用于追踪进步）</label>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;" id="ratings-grid">
+            <div class="rating-item"><label>正手</label><div class="rating-row"><input type="range" min="1" max="10" value="5" class="rating" data-dim="forehand"><span class="rating-val">5</span></div></div>
+            <div class="rating-item"><label>反手</label><div class="rating-row"><input type="range" min="1" max="10" value="5" class="rating" data-dim="backhand"><span class="rating-val">5</span></div></div>
+            <div class="rating-item"><label>发球</label><div class="rating-row"><input type="range" min="1" max="10" value="5" class="rating" data-dim="serve"><span class="rating-val">5</span></div></div>
+            <div class="rating-item"><label>截击</label><div class="rating-row"><input type="range" min="1" max="10" value="5" class="rating" data-dim="volley"><span class="rating-val">5</span></div></div>
+            <div class="rating-item"><label>步伐</label><div class="rating-row"><input type="range" min="1" max="10" value="5" class="rating" data-dim="footwork"><span class="rating-val">5</span></div></div>
+            <div class="rating-item"><label>体能</label><div class="rating-row"><input type="range" min="1" max="10" value="5" class="rating" data-dim="fitness"><span class="rating-val">5</span></div></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>备注（课后作业等）</label>
+          <textarea id="lesson-note" placeholder="例如：回去每天练50个发球抛球"></textarea>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="recordLesson()" style="margin-top:8px;">✅ 记录（同时消课 -1）</button>
+      </div>
+      <div style="margin-top:16px;">
+        <h3 style="font-size:15px;margin-bottom:10px;">📋 最近记录</h3>
+        <div class="card" id="recent-logs"></div>
+      </div>
+    </div>
+
+    <!-- 看板页 -->
+    <div class="page" id="page-board">
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-num" id="stat-total">0</div><div class="stat-label">总学员数</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-month">0</div><div class="stat-label">本月课时</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-avg">-</div><div class="stat-label">综合平均分</div></div>
+        <div class="stat-card"><div class="stat-num" id="stat-low">0</div><div class="stat-label">课时不足(≤2)</div></div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:15px;margin-bottom:10px;">选择学员查看进度</h3>
+        <select id="board-student" style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px;" onchange="renderBoard()">
+          <option value="">-- 请选择学员 --</option>
+        </select>
+        <div id="board-detail" style="margin-top:12px;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 添加/编辑学员弹窗 -->
+<div class="modal-bg" id="student-modal">
+  <div class="modal">
+    <h3 id="student-modal-title">添加学员</h3>
+    <input type="hidden" id="edit-student-id">
+    <div class="form-group"><label>姓名</label><input type="text" id="s-name" placeholder="学员姓名"></div>
+    <div class="form-group"><label>手机号</label><input type="tel" id="s-phone" placeholder="手机号（可选）"></div>
+    <div class="form-row">
+      <div class="form-group"><label>水平等级</label><select id="s-level"><option value="1.0">1.0 入门</option><option value="1.5">1.5</option><option value="2.0">2.0 初级</option><option value="2.5">2.5</option><option value="3.0" selected>3.0 中级</option><option value="3.5">3.5</option><option value="4.0">4.0 进阶</option><option value="4.5">4.5</option><option value="5.0">5.0+ 高水平</option></select></div>
+      <div class="form-group"><label>学员类型</label><select id="s-type"><option>成人</option><option>少儿</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>课时总数</label><input type="number" id="s-total" value="10" min="1"></div>
+      <div class="form-group"><label>已上课时（可后改）</label><input type="number" id="s-used" value="0" min="0"></div>
+    </div>
+    <div class="form-group"><label>备注</label><textarea id="s-note" placeholder="特殊需求、伤病情况等"></textarea></div>
+    <div style="display:flex; gap:8px; margin-top:16px;">
+      <button class="btn btn-outline btn-block" onclick="closeStudentModal()">取消</button>
+      <button class="btn btn-primary btn-block" onclick="saveStudent()">保存</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== 数据层 ====================
+const STORAGE_KEY = 'tennis_coach_data';
+
+function loadData() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) return JSON.parse(raw);
+  return { students: [], lessons: [], nextId: 1 };
+}
+
+function saveData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+let DATA = loadData();
+
+function persist() { saveData(DATA); }
+
+// ==================== 工具函数 ====================
+function $(sel) { return document.querySelector(sel); }
+function $$(sel) { return document.querySelectorAll(sel); }
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function remaining(s) { return (s.totalLessons || 0) - (s.usedLessons || 0); }
+
+function avatarColor(name) {
+  const colors = ['#E53935','#1E88E5','#43A047','#FB8C00','#8E24AA','#00ACC1','#D81B60','#3949AB'];
+  let hash = 0;
+  for (let c of name) hash = c.charCodeAt(0) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
+}
+
+function showToast(msg) {
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ==================== Tab 切换 ====================
+$$('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const name = tab.dataset.tab;
+    $$('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    $$('.page').forEach(p => p.classList.remove('active'));
+    $(`#page-${name}`).classList.add('active');
+    if (name === 'board') refreshBoard();
+  });
+});
+
+// ==================== 学员管理 ====================
+function renderStudentList() {
+  const list = $('#student-list');
+  const empty = $('#empty-students');
+  const count = $('#student-count');
+  const students = DATA.students;
+
+  count.textContent = `共 ${students.length} 名学员`;
+
+  if (students.length === 0) {
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  list.innerHTML = students.map(s => {
+    const rem = remaining(s);
+    let cls = '';
+    if (rem <= 0) cls = 'danger';
+    else if (rem <= 2) cls = 'warn';
+    return `
+      <div class="card student-card" style="cursor:pointer;" onclick="editStudent(${s.id})">
+        <div class="avatar" style="background:${avatarColor(s.name)};">${s.name[0]}</div>
+        <div class="student-info">
+          <div class="name">${s.name} <span style="font-size:11px;color:var(--muted);">${s.level}</span></div>
+          <div class="meta">${s.type} · ${s.phone || '未留手机'}</div>
+        </div>
+        <div class="lesson-count">
+          <div class="num ${cls}">${rem}</div>
+          <div class="label">剩余课时</div>
+        </div>
+        <span style="cursor:pointer;padding:4px;font-size:18px;" onclick="event.stopPropagation();deleteStudent(${s.id},'${s.name}')">🗑️</span>
+      </div>`;
+  }).join('');
+
+  // Update selects
+  updateStudentSelects();
+}
+
+function updateStudentSelects() {
+  const students = DATA.students;
+  const opts = students.map(s => `<option value="${s.id}">${s.name} (${s.level} · 剩余${remaining(s)}节)</option>`).join('');
+  $$('#lesson-student, #board-student').forEach(sel => {
+    sel.innerHTML = `<option value="">-- 请选择学员 --</option>` + opts;
+  });
+}
+
+function showStudentModal(id) {
+  const modal = $('#student-modal');
+  if (id) {
+    const s = DATA.students.find(st => st.id === id);
+    if (!s) return;
+    $('#student-modal-title').textContent = '编辑学员';
+    $('#edit-student-id').value = s.id;
+    $('#s-name').value = s.name;
+    $('#s-phone').value = s.phone || '';
+    $('#s-level').value = s.level;
+    $('#s-type').value = s.type;
+    $('#s-total').value = s.totalLessons;
+    $('#s-used').value = s.usedLessons;
+    $('#s-note').value = s.note || '';
+  } else {
+    $('#student-modal-title').textContent = '添加学员';
+    $('#edit-student-id').value = '';
+    $('#s-name').value = '';
+    $('#s-phone').value = '';
+    $('#s-level').value = '3.0';
+    $('#s-type').value = '成人';
+    $('#s-total').value = '10';
+    $('#s-used').value = '0';
+    $('#s-note').value = '';
+  }
+  modal.classList.add('show');
+}
+
+function closeStudentModal() {
+  $('#student-modal').classList.remove('show');
+}
+
+function saveStudent() {
+  const name = $('#s-name').value.trim();
+  if (!name) { showToast('请输入姓名'); return; }
+  const id = parseInt($('#edit-student-id').value) || DATA.nextId;
+
+  const existing = DATA.students.find(s => s.id === id);
+  if (existing) {
+    existing.name = name;
+    existing.phone = $('#s-phone').value.trim();
+    existing.level = $('#s-level').value;
+    existing.type = $('#s-type').value;
+    existing.totalLessons = parseInt($('#s-total').value) || 0;
+    existing.usedLessons = parseInt($('#s-used').value) || 0;
+    existing.note = $('#s-note').value.trim();
+  } else {
+    DATA.students.push({
+      id: DATA.nextId++,
+      name,
+      phone: $('#s-phone').value.trim(),
+      level: $('#s-level').value,
+      type: $('#s-type').value,
+      totalLessons: parseInt($('#s-total').value) || 0,
+      usedLessons: parseInt($('#s-used').value) || 0,
+      note: $('#s-note').value.trim(),
+      createdAt: new Date().toISOString()
+    });
+  }
+  persist();
+  closeStudentModal();
+  renderStudentList();
+  renderRecentLogs();
+  showToast('✅ 保存成功');
+}
+
+function editStudent(id) {
+  showStudentModal(id);
+}
+
+function deleteStudent(id, name) {
+  if (!confirm(`确定要删除学员「${name}」吗？\n相关的上课记录也会一并删除。`)) return;
+  DATA.students = DATA.students.filter(s => s.id !== id);
+  DATA.lessons = DATA.lessons.filter(l => l.studentId !== id);
+  persist();
+  renderStudentList();
+  renderRecentLogs();
+  showToast('已删除');
+}
+
+// ==================== 上课记录 ====================
+function recordLesson() {
+  const studentId = parseInt($('#lesson-student').value);
+  if (!studentId) { showToast('请选择学员'); return; }
+  const student = DATA.students.find(s => s.id === studentId);
+  if (!student) { showToast('学员不存在'); return; }
+
+  const content = $('#lesson-content').value.trim();
+  const note = $('#lesson-note').value.trim();
+  if (!content && !note) { showToast('请填写训练内容或备注'); return; }
+
+  const ratings = {};
+  $$('.rating').forEach(r => { ratings[r.dataset.dim] = parseInt(r.value); });
+
+  DATA.lessons.push({
+    id: DATA.nextId++,
+    studentId,
+    date: $('#lesson-date').value || formatDate(new Date()),
+    content,
+    note,
+    ratings,
+    createdAt: new Date().toISOString()
+  });
+
+  student.usedLessons += 1;
+  persist();
+
+  // Reset form
+  $('#lesson-content').value = '';
+  $('#lesson-note').value = '';
+  $$('.rating').forEach(r => { r.value = 5; const d = r.parentElement.querySelector('.rating-val'); if (d) d.textContent = '5'; });
+
+  renderStudentList();
+  renderRecentLogs();
+  const rem = remaining(student);
+  const warn = rem <= 2 ? ` ⚠️ 仅剩 ${rem} 节！` : '';
+  showToast(`✅ 记课成功！${student.name} 剩余 ${rem} 节${warn}`);
+}
+
+function renderRecentLogs() {
+  const container = $('#recent-logs');
+  const logs = [...DATA.lessons].sort((a, b) => b.id - a.id).slice(0, 20);
+
+  if (logs.length === 0) {
+    container.innerHTML = '<div class="empty" style="padding:20px;"><p style="font-size:13px;">还没有上课记录</p></div>';
+    return;
+  }
+
+  container.innerHTML = logs.map(l => {
+    const s = DATA.students.find(st => st.id === l.studentId);
+    const name = s ? s.name : '(已删除)';
+    const dims = l.ratings ? Object.entries(l.ratings).filter(([,v]) => v > 0) : [];
+    const dimLabels = { forehand:'正手', backhand:'反手', serve:'发球', volley:'截击', footwork:'步伐', fitness:'体能' };
+    const tags = dims.map(([k,v]) => `<span class="tag">${dimLabels[k]||k}:${v}</span>`).join('');
+    return `
+      <div class="log-item">
+        <div class="log-date">${l.date} · ${name}</div>
+        <div class="log-content">${l.content || '(仅评分)'}</div>
+        ${tags ? `<div class="log-meta">${tags}</div>` : ''}
+        ${l.note ? `<div class="log-meta" style="color:#E53935;">📌 ${l.note}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+// ==================== 看板 ====================
+function refreshBoard() {
+  // Stats
+  const students = DATA.students;
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const monthLessons = DATA.lessons.filter(l => l.date.startsWith(thisMonth)).length;
+  const lowLesson = students.filter(s => remaining(s) <= 2).length;
+
+  $('#stat-total').textContent = students.length;
+  $('#stat-month').textContent = monthLessons;
+
+  if (students.length > 0) {
+    const allRatings = DATA.lessons.flatMap(l => Object.values(l.ratings || {}));
+    const avg = allRatings.length > 0 ? (allRatings.reduce((a,b)=>a+b,0) / allRatings.length).toFixed(1) : '-';
+    $('#stat-avg').textContent = avg;
+  } else {
+    $('#stat-avg').textContent = '-';
+  }
+  $('#stat-low').textContent = lowLesson;
+
+  updateStudentSelects();
+  renderBoard();
+}
+
+function renderBoard() {
+  const studentId = parseInt($('#board-student').value);
+  const detail = $('#board-detail');
+
+  if (!studentId) {
+    detail.innerHTML = '<div class="empty" style="padding:16px;"><p style="font-size:13px;">选择学员查看详细数据</p></div>';
+    return;
+  }
+
+  const s = DATA.students.find(st => st.id === studentId);
+  if (!s) return;
+
+  const sLessons = DATA.lessons.filter(l => l.studentId === studentId).sort((a, b) => a.date.localeCompare(b.date));
+  const rem = remaining(s);
+  const lessonHistory = sLessons.map(l => l.date).slice(-10);
+
+  // Average ratings
+  const dims = ['forehand', 'backhand', 'serve', 'volley', 'footwork', 'fitness'];
+  const dimLabels = { forehand:'正手', backhand:'反手', serve:'发球', volley:'截击', footwork:'步伐', fitness:'体能' };
+  const avgRatings = {};
+  dims.forEach(d => {
+    const vals = sLessons.map(l => (l.ratings||{})[d]).filter(v => v);
+    avgRatings[d] = vals.length ? (vals.reduce((a,b)=>a+b,0) / vals.length).toFixed(1) : 0;
+  });
+
+  detail.innerHTML = `
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+      <div class="avatar" style="background:${avatarColor(s.name)};width:36px;height:36px;font-size:16px;">${s.name[0]}</div>
+      <div>
+        <strong>${s.name}</strong>
+        <span style="font-size:12px;color:var(--muted);margin-left:6px;">${s.level} · ${s.type}</span>
+      </div>
+      <div style="margin-left:auto;text-align:center;">
+        <div style="font-size:20px;font-weight:700;color:${rem<=2?'var(--red)':'var(--green)'};">${rem}</div>
+        <div style="font-size:11px;color:var(--muted);">剩余课时</div>
+      </div>
+    </div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">
+      共 ${sLessons.length} 节课 | 上次: ${sLessons.length ? sLessons[sLessons.length-1].date : '无'}
+    </div>
+    <div class="radar-wrap"><canvas id="radar" width="260" height="260"></canvas></div>
+    ${s.note ? `<div style="font-size:12px;color:var(--muted);margin-top:8px;">📝 ${s.note}</div>` : ''}
+  `;
+
+  // Draw radar
+  setTimeout(() => drawRadar(avgRatings, dimLabels, dims), 50);
+}
+
+function drawRadar(ratings, labels, dims) {
+  const canvas = document.getElementById('radar');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const cx = 130, cy = 130, r = 100;
+  const n = dims.length;
+
+  ctx.clearRect(0, 0, 260, 260);
+
+  // Grid
+  for (let level = 2; level <= 10; level += 2) {
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) {
+      const angle = (Math.PI * 2 / n) * i - Math.PI / 2;
+      const pr = (r * level) / 10;
+      const x = cx + pr * Math.cos(angle);
+      const y = cy + pr * Math.sin(angle);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Axes
+  for (let i = 0; i < n; i++) {
+    const angle = (Math.PI * 2 / n) * i - Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle));
+    ctx.strokeStyle = '#e0e0e0';
+    ctx.stroke();
+  }
+
+  // Data
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) {
+    const val = parseFloat(ratings[dims[i]]) || 0;
+    const angle = (Math.PI * 2 / n) * i - Math.PI / 2;
+    const pr = (r * val) / 10;
+    const x = cx + pr * Math.cos(angle);
+    const y = cy + pr * Math.sin(angle);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  }
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(40, 53, 147, 0.2)';
+  ctx.fill();
+  ctx.strokeStyle = '#283593';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Dots & labels
+  for (let i = 0; i < n; i++) {
+    const val = parseFloat(ratings[dims[i]]) || 0;
+    const angle = (Math.PI * 2 / n) * i - Math.PI / 2;
+    const pr = (r * val) / 10;
+    const x = cx + pr * Math.cos(angle);
+    const y = cy + pr * Math.sin(angle);
+
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#283593';
+    ctx.fill();
+
+    // Label
+    const lx = cx + (r + 20) * Math.cos(angle);
+    const ly = cy + (r + 20) * Math.sin(angle);
+    ctx.fillStyle = '#333';
+    ctx.font = '12px "PingFang SC","Microsoft YaHei",sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${labels[dims[i]]} ${val}`, lx, ly);
+  }
+}
+
+// ==================== 初始化 ====================
+function init() {
+  $('#lesson-date').value = formatDate(new Date());
+  renderStudentList();
+  renderRecentLogs();
+  refreshBoard();
+
+  // Rating slider live preview
+  $$('.rating').forEach(slider => {
+    slider.addEventListener('input', (e) => {
+      const val = e.target.value;
+      const display = e.target.parentElement.querySelector('.rating-val');
+      if (display) display.textContent = val;
+    });
+  });
+
+  // Close modal on bg click
+  $('#student-modal').addEventListener('click', (e) => {
+    if (e.target === $('#student-modal')) closeStudentModal();
+  });
+}
+
+init();
+</script>
+</body>
+</html>

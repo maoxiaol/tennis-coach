@@ -3,225 +3,525 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>网球教练工作台</title>
+<title>CourtEdge · 网球教练工作台</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --green: #4CAF50;
-    --yellow: #FFB300;
-    --red: #E53935;
-    --bg: #f5f5f5;
-    --card: #fff;
-    --text: #333;
-    --muted: #999;
-    --border: #e0e0e0;
-    --shadow: 0 2px 8px rgba(0,0,0,0.08);
-    --radius: 12px;
+    --bg:        #f7f9f6;
+    --surface:   #ffffff;
+    --elevated:  #f0f4ef;
+    --green:     #2ecc71;
+    --green-d:   #27ae60;
+    --green-pale:#e8f5e9;
+    --sky:       #74b9ff;
+    --sky-pale:  #e3f2fd;
+    --ball:      #f9a825;
+    --ball-pale: #fff8e1;
+    --clay:      #e8895b;
+    --text:      #2c3e50;
+    --text-dim:  #5a6c7d;
+    --muted:     #94a3b8;
+    --border:    #e8ece9;
+    --border-f:  #d5dbd6;
+    --danger:    #e74c3c;
+    --danger-bg: #fdecea;
+    --warn:      #f39c12;
+    --radius-sm: 8px;
+    --radius:    14px;
+    --radius-lg: 20px;
+    --radius-xl: 24px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+    --shadow:    0 4px 16px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+    --shadow-lg: 0 12px 40px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+    --font-display: 'Fredoka', 'Noto Sans SC', sans-serif;
+    --font-body:    'Noto Sans SC', -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
   }
   * { margin:0; padding:0; box-sizing:border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; background: var(--bg); color: var(--text); line-height:1.6; }
-  .app { max-width: 480px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column; }
+  html { background: var(--bg); }
+  body {
+    font-family: var(--font-body);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    /* Subtle court-line texture */
+    background-image:
+      radial-gradient(ellipse at 15% 5%, rgba(46,204,113,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 85% 95%, rgba(116,185,255,0.05) 0%, transparent 50%);
+  }
+  .app { max-width:500px; margin:0 auto; min-height:100vh; position:relative; }
 
-  /* Header */
-  .header { background: linear-gradient(135deg, #1a237e 0%, #283593 100%); color:#fff; padding:20px; text-align:center; }
-  .header h1 { font-size:20px; margin-bottom:4px; }
-  .header .sub { font-size:13px; opacity:0.8; }
+  /* ============ HEADER ============ */
+  .header {
+    background: linear-gradient(165deg, #ffffff 0%, #f0f7f2 100%);
+    padding: 18px 18px 14px;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+  }
+  .header::after {
+    content: '';
+    position: absolute; bottom: 0; left: 20px; right: 20px; height: 2px;
+    background: linear-gradient(90deg, transparent, var(--green), var(--sky), transparent);
+    border-radius: 2px;
+    opacity: 0.6;
+  }
+  .header-top { display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
+  .logo { display:flex; align-items:center; gap:8px; }
+  .logo-mark {
+    width: 38px; height: 38px; border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, var(--green) 0%, var(--green-d) 100%);
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-display); font-size:20px; color:#fff; font-weight:700;
+    box-shadow: 0 4px 12px rgba(46,204,113,0.25);
+  }
+  .logo-text {
+    font-family: var(--font-display); font-size:26px; letter-spacing:1px;
+    color: var(--text); font-weight:600;
+  }
+  .logo-text .accent { color: var(--green); }
 
-  /* Tabs */
-  .tabs { display:flex; background:var(--card); border-bottom:1px solid var(--border); position:sticky; top:0; z-index:10; }
-  .tab { flex:1; text-align:center; padding:14px 0; font-size:14px; cursor:pointer; border-bottom:2px solid transparent; transition:all 0.2s; color:var(--muted); }
-  .tab.active { color: #283593; border-bottom-color: #283593; font-weight:600; }
+  .header-sub { font-size:12px; color:var(--muted); }
 
-  /* Content */
-  .content { flex:1; padding:16px; }
-  .page { display:none; }
+  /* ============ ROLE TOGGLE ============ */
+  .role-toggle {
+    display:flex; background:var(--elevated); border-radius:24px; padding:3px;
+    border:1px solid var(--border); gap:2px;
+  }
+  .role-btn {
+    padding:7px 14px; border-radius:22px; border:none; cursor:pointer;
+    font-family: var(--font-body); font-size:12px; font-weight:600;
+    background:transparent; color:var(--muted);
+    transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+    white-space:nowrap;
+  }
+  .role-btn.active {
+    background: var(--green); color: #fff;
+    box-shadow: 0 2px 10px rgba(46,204,113,0.3);
+  }
+  .role-label { font-size:11px; color:var(--green-d); font-weight:600; }
+
+  /* ============ TABS ============ */
+  .tabs {
+    display:flex; gap:6px; padding:12px 16px;
+    background: var(--surface); position:sticky; top:0; z-index:10;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    flex:1; text-align:center; padding:10px 0; font-size:13px; cursor:pointer;
+    border-radius: var(--radius-sm); background:transparent; color:var(--muted);
+    font-weight:500; transition: all 0.3s ease; letter-spacing:0.3px;
+  }
+  .tab.active {
+    color: var(--green-d); background: var(--green-pale);
+    font-weight:600;
+  }
+  .tab-icon { font-size:15px; display:block; margin-bottom:1px; }
+
+  /* ============ CONTENT ============ */
+  .content { flex:1; padding:14px 16px; }
+  .page { display:none; animation: fadeIn 0.3s ease; }
   .page.active { display:block; }
+  @keyframes fadeIn {
+    from { opacity:0; transform:translateY(6px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
 
-  /* Cards */
-  .card { background:var(--card); border-radius:var(--radius); padding:16px; margin-bottom:12px; box-shadow:var(--shadow); }
-  .card-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
-  .card-header h3 { font-size:16px; }
-  .badge { display:inline-block; padding:2px 10px; border-radius:20px; font-size:12px; font-weight:600; }
-  .badge-green { background:#E8F5E9; color:#2E7D32; }
-  .badge-yellow { background:#FFF8E1; color:#F57F17; }
-  .badge-red { background:#FFEBEE; color:#C62828; }
+  /* ============ SECTION HEADERS ============ */
+  .section-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; }
+  .section-title {
+    font-family: var(--font-display); font-size:22px; letter-spacing:0.5px;
+    color: var(--text); font-weight:600; line-height:1.2;
+  }
+  .section-count { font-size:12px; color:var(--muted); margin-top:2px; }
 
-  /* Buttons */
-  .btn { display:inline-flex; align-items:center; gap:4px; padding:8px 16px; border-radius:8px; border:none; font-size:14px; cursor:pointer; transition:all 0.15s; font-family:inherit; }
-  .btn-primary { background:#283593; color:#fff; }
-  .btn-primary:hover { background:#1a237e; }
-  .btn-outline { background:var(--card); border:1px solid var(--border); color:var(--text); }
-  .btn-outline:hover { background:#f5f5f5; }
-  .btn-sm { padding:4px 10px; font-size:12px; }
-  .btn-danger { background:var(--red); color:#fff; }
-  .btn-danger:hover { opacity:0.9; }
-  .btn-success { background:var(--green); color:#fff; }
-  .btn-block { width:100%; justify-content:center; }
+  /* ============ CARDS ============ */
+  .card {
+    background: var(--surface); border-radius: var(--radius-lg);
+    padding:16px; margin-bottom:10px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
+  }
+  .card:active { transform:scale(0.99); }
 
-  /* Forms */
-  .form-group { margin-bottom:12px; }
-  .form-group label { display:block; font-size:13px; font-weight:600; margin-bottom:4px; color:var(--muted); }
-  .form-group input, .form-group textarea, .form-group select { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px; font-family:inherit; transition:border-color 0.2s; }
-  .form-group input:focus, .form-group textarea:focus { outline:none; border-color:#283593; }
-  .form-group textarea { resize:vertical; min-height:60px; }
-  .form-row { display:flex; gap:8px; }
-  .form-row > * { flex:1; }
-
-  /* Student list */
-  .student-card { display:flex; align-items:center; gap:12px; }
-  .avatar { width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:700; color:#fff; flex-shrink:0; }
+  /* ============ STUDENT CARD ============ */
+  .student-row { display:flex; align-items:center; gap:14px; }
+  .avatar {
+    width:48px; height:48px; border-radius: var(--radius);
+    display:flex; align-items:center; justify-content:center;
+    font-family: var(--font-display); font-size:22px; color:#fff; flex-shrink:0;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+  }
   .student-info { flex:1; min-width:0; }
-  .student-info .name { font-weight:600; font-size:15px; }
-  .student-info .meta { font-size:12px; color:var(--muted); margin-top:2px; }
-  .lesson-count { text-align:center; flex-shrink:0; }
-  .lesson-count .num { font-size:22px; font-weight:700; }
-  .lesson-count .num.warn { color:var(--yellow); }
-  .lesson-count .num.danger { color:var(--red); }
-  .lesson-count .label { font-size:11px; color:var(--muted); }
+  .student-name { font-weight:700; font-size:15px; color:var(--text); }
+  .student-meta { font-size:12px; color:var(--muted); margin-top:2px; display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+  .level-tag {
+    display:inline-block; padding:2px 8px; border-radius:6px;
+    font-size:11px; font-weight:700;
+    background: var(--green-pale); color: var(--green-d);
+  }
+  .type-tag {
+    display:inline-block; padding:2px 8px; border-radius:6px;
+    font-size:11px; background: var(--elevated); color: var(--text-dim);
+  }
 
-  /* Modal */
-  .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100; align-items:center; justify-content:center; }
-  .modal-bg.show { display:flex; }
-  .modal { background:var(--card); border-radius:var(--radius); padding:20px; width:90%; max-width:400px; max-height:85vh; overflow-y:auto; }
-  .modal h3 { margin-bottom:16px; font-size:18px; }
+  .lesson-badge { text-align:center; flex-shrink:0; min-width:48px; }
+  .lesson-num {
+    font-family: var(--font-display); font-size:30px; line-height:1; font-weight:600;
+    color: var(--green-d);
+  }
+  .lesson-num.warn  { color: var(--warn); }
+  .lesson-num.danger { color: var(--danger); }
+  .lesson-label { font-size:10px; color:var(--muted); margin-top:1px; }
 
-  /* Radar chart */
-  .radar-wrap { display:flex; justify-content:center; padding:10px 0; }
-  canvas { max-width:100%; }
+  .del-btn {
+    width:32px; height:32px; border-radius:50%; border:1px solid var(--border);
+    background:var(--surface); color:var(--muted); cursor:pointer; font-size:14px;
+    display:flex; align-items:center; justify-content:center;
+    transition:all 0.2s; flex-shrink:0;
+  }
+  .del-btn:hover { background:var(--danger-bg); color:var(--danger); border-color:var(--danger-bg); }
 
-  /* Empty state */
-  .empty { text-align:center; padding:40px 20px; color:var(--muted); }
-  .empty .icon { font-size:48px; margin-bottom:12px; }
-  .empty p { font-size:14px; }
+  /* ============ BUTTONS ============ */
+  .btn {
+    display:inline-flex; align-items:center; gap:6px; padding:10px 18px;
+    border-radius:var(--radius); border:none; font-size:13px; cursor:pointer;
+    font-family: var(--font-body); font-weight:600;
+    transition: all 0.2s ease; letter-spacing:0.3px;
+  }
+  .btn--primary { background:var(--green); color:#fff; box-shadow:0 4px 14px rgba(46,204,113,0.25); }
+  .btn--primary:hover { background:var(--green-d); transform:translateY(-1px); box-shadow:0 6px 20px rgba(46,204,113,0.35); }
+  .btn--outline { background:var(--surface); border:1px solid var(--border-f); color:var(--text-dim); }
+  .btn--outline:hover { border-color:var(--green); color:var(--green-d); background:var(--green-pale); }
+  .btn--block { width:100%; justify-content:center; }
+  .btn--sm { padding:6px 12px; font-size:11px; border-radius:var(--radius-sm); }
+  .btn--danger { background:var(--danger-bg); color:var(--danger); }
+  .btn--danger:hover { background:#fadbd8; }
 
-  /* Log */
-  .log-item { padding:12px 0; border-bottom:1px solid var(--border); }
+  .btn .ico { font-size:15px; }
+
+  /* ============ EMPTY STATE ============ */
+  .empty-state { text-align:center; padding:60px 20px; }
+  .empty-icon { font-size:52px; margin-bottom:12px; opacity:0.7; }
+  .empty-title { font-family:var(--font-display); font-size:20px; color:var(--text-dim); letter-spacing:0.5px; margin-bottom:4px; }
+  .empty-desc { font-size:13px; color:var(--muted); }
+
+  /* ============ FORM FIELDS ============ */
+  .field { margin-bottom:14px; }
+  .field-label {
+    display:block; font-size:11px; font-weight:700; margin-bottom:6px;
+    color:var(--text-dim); text-transform:uppercase; letter-spacing:0.8px;
+  }
+  .field input, .field textarea, .field select {
+    width:100%; padding:11px 14px;
+    border:1.5px solid var(--border); border-radius:var(--radius);
+    background:var(--elevated); color:var(--text); font-size:14px;
+    font-family: var(--font-body);
+    transition: all 0.2s;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus {
+    outline:none; border-color:var(--green); background:var(--surface);
+    box-shadow:0 0 0 4px rgba(46,204,113,0.08);
+  }
+  .field textarea { resize:vertical; min-height:64px; }
+  .field select {
+    appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 12px center; padding-right:36px;
+  }
+  .field-row { display:flex; gap:10px; }
+  .field-row > * { flex:1; }
+
+  /* ============ RATING SLIDERS ============ */
+  .ratings-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .rating-cell {
+    background:var(--elevated); border-radius:var(--radius); padding:10px 12px;
+    border:1px solid var(--border);
+    transition:border-color 0.2s;
+  }
+  .rating-cell:hover { border-color:var(--green); }
+  .rating-cell__label {
+    font-size:11px; font-weight:700; color:var(--text-dim);
+    margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;
+  }
+  .rating-cell__label span { font-size:10px; color:var(--muted); font-weight:400; }
+  .rating-cell__row { display:flex; align-items:center; gap:10px; }
+  .rating-cell__row input[type=range] { flex:1; accent-color:var(--green); height:4px; }
+  .rating-cell__val {
+    width:28px; height:28px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; font-weight:700; color:#fff;
+    background:var(--green); box-shadow:0 2px 6px rgba(46,204,113,0.3);
+    transition:all 0.15s;
+  }
+
+  /* ============ STAT CARDS ============ */
+  .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:18px; }
+  .stat-card {
+    background:var(--surface); border-radius:var(--radius-lg); padding:18px 16px;
+    border:1px solid var(--border); box-shadow:var(--shadow-sm);
+    position:relative; overflow:hidden;
+  }
+  .stat-card::after {
+    content:''; position:absolute; top:0; left:0; right:0; height:3px;
+  }
+  .st--total::after { background:var(--sky); }
+  .st--month::after { background:var(--green); }
+  .st--avg::after   { background:var(--clay); }
+  .st--low::after   { background:var(--ball); }
+  .stat-num {
+    font-family:var(--font-display); font-size:38px; line-height:1; font-weight:600;
+    color:var(--text); letter-spacing:0.5px;
+  }
+  .stat-label { font-size:11px; color:var(--muted); margin-top:5px; font-weight:500; }
+
+  /* ============ LOG ITEMS ============ */
+  .log-card {
+    background:var(--surface); border-radius:var(--radius-lg);
+    border:1px solid var(--border); overflow:hidden; box-shadow:var(--shadow-sm);
+  }
+  .log-item {
+    padding:14px 16px; border-bottom:1px solid var(--border);
+    transition:background 0.15s;
+  }
   .log-item:last-child { border-bottom:none; }
-  .log-item .log-date { font-size:12px; color:var(--muted); }
-  .log-item .log-content { font-size:14px; margin-top:4px; }
-  .log-item .log-meta { font-size:12px; color:var(--muted); margin-top:2px; }
-  .tag { display:inline-block; padding:1px 8px; border-radius:10px; font-size:11px; background:#E8EAF6; color:#283593; margin-right:4px; }
+  .log-item:hover { background:var(--elevated); }
+  .log-item__head { display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; }
+  .log-item__date { font-size:11px; color:var(--muted); }
+  .log-item__student { font-size:12px; font-weight:700; color:var(--green-d); }
+  .log-item__content { font-size:14px; color:var(--text); }
+  .log-item__tags { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+  .skill-tag {
+    display:inline-block; padding:2px 8px; border-radius:6px;
+    font-size:10px; font-weight:700;
+    background:var(--green-pale); color:var(--green-d);
+  }
+  .log-item__note { font-size:12px; color:var(--clay); margin-top:4px; }
 
-  /* Stats */
-  .stat-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
-  .stat-card { background:var(--card); border-radius:var(--radius); padding:14px; box-shadow:var(--shadow); text-align:center; }
-  .stat-card .stat-num { font-size:28px; font-weight:700; color:#283593; }
-  .stat-card .stat-label { font-size:12px; color:var(--muted); margin-top:2px; }
+  /* ============ BOARD ============ */
+  .board-card {
+    background:var(--surface); border-radius:var(--radius-lg);
+    border:1px solid var(--border); box-shadow:var(--shadow-sm);
+    padding:16px; margin-top:10px;
+  }
+  .board-header { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+  .board-header__info { flex:1; }
+  .board-header__name { font-weight:700; font-size:16px; color:var(--text); }
+  .board-header__sub { font-size:12px; color:var(--muted); margin-top:1px; }
+  .board-header__lessons { text-align:center; }
+  .board-header__num {
+    font-family:var(--font-display); font-size:34px; line-height:1;
+    color:var(--green-d);
+  }
+  .board-header__num.low { color:var(--danger); }
+  .radar-container { display:flex; justify-content:center; padding:6px 0; }
+  .radar-container canvas { max-width:100%; }
 
-  .toast { position:fixed; top:20px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:10px 20px; border-radius:20px; font-size:14px; z-index:200; opacity:0; transition:opacity 0.3s; pointer-events:none; }
+  /* ============ MODAL ============ */
+  .modal-overlay {
+    display:none; position:fixed; inset:0; z-index:100;
+    background:rgba(0,0,0,0.3); backdrop-filter:blur(3px);
+    align-items:flex-end; justify-content:center;
+  }
+  .modal-overlay.show { display:flex; animation:overlayIn 0.2s ease; }
+  @keyframes overlayIn { from{opacity:0} to{opacity:1} }
+  .modal {
+    background:var(--surface); border-radius:var(--radius-xl) var(--radius-xl) 0 0;
+    padding:24px 20px 32px; width:100%; max-width:500px; max-height:88vh; overflow-y:auto;
+    border-top:1px solid var(--border); box-shadow:var(--shadow-lg);
+    animation:modalUp 0.35s cubic-bezier(0.16,1,0.3,1);
+  }
+  @keyframes modalUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+  .modal__title {
+    font-family:var(--font-display); font-size:24px; color:var(--text);
+    letter-spacing:0.5px; margin-bottom:20px;
+  }
+  .modal__actions { display:flex; gap:10px; margin-top:20px; }
+
+  /* ============ TOAST ============ */
+  .toast {
+    position:fixed; top:24px; left:50%; transform:translateX(-50%); z-index:200;
+    background:var(--text); color:#fff; padding:12px 24px;
+    border-radius:24px; font-size:13px; font-weight:600;
+    box-shadow:var(--shadow-lg); opacity:0; transition:opacity 0.3s; pointer-events:none;
+  }
   .toast.show { opacity:1; }
 
-  /* Rating slider */
-  .rating-item { background:#fafafa; border-radius:8px; padding:8px 10px; }
-  .rating-item > label { font-size:12px; font-weight:600; color:var(--muted); display:block; margin-bottom:4px; }
-  .rating-row { display:flex; align-items:center; gap:8px; }
-  .rating-row input[type=range] { flex:1; accent-color:#283593; }
-  .rating-val { width:24px; height:24px; border-radius:50%; background:#283593; color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  /* ============ STUDENT JOURNAL ============ */
+  .journal-entry { padding:12px 0; border-bottom:1px solid var(--border); }
+  .journal-entry:last-child { border-bottom:none; }
+  .journal-date { font-size:11px; color:var(--muted); font-weight:500; }
+  .journal-text { font-size:14px; color:var(--text); margin-top:4px; line-height:1.7; }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width:400px) {
+    .header { padding:14px 14px 12px; }
+    .logo-text { font-size:22px; }
+    .content { padding:10px 12px; }
+    .stat-num { font-size:30px; }
+    .ratings-grid { grid-template-columns:1fr; }
+    .field-row { flex-direction:column; gap:8px; }
+    .role-btn { padding:6px 10px; font-size:11px; }
+  }
 </style>
 </head>
 <body>
 <div class="app">
+  <!-- HEADER -->
   <div class="header">
-    <h1>🎾 网球教练工作台</h1>
-    <div class="sub">学员管理 · 上课记录 · 进度追踪</div>
+    <div class="header-top">
+      <div class="logo">
+        <div class="logo-mark">🎾</div>
+        <div class="logo-text">Court<span class="accent">Edge</span></div>
+      </div>
+      <div class="role-toggle" id="roleToggle">
+        <button class="role-btn active" data-role="coach" onclick="switchRole('coach')">🎾 教练</button>
+        <button class="role-btn" data-role="student" onclick="switchRole('student')">📖 学员</button>
+      </div>
+    </div>
+    <div class="role-label" id="roleLabel">教练模式 · 管理学员、记录训练、追踪进度</div>
   </div>
+
+  <!-- TABS -->
   <div class="tabs">
-    <div class="tab active" data-tab="students">👥 学员</div>
-    <div class="tab" data-tab="lesson">📝 记课</div>
-    <div class="tab" data-tab="board">📊 看板</div>
+    <div class="tab active" data-tab="students"><span class="tab-icon">👥</span>学员</div>
+    <div class="tab" data-tab="lesson"><span class="tab-icon">📝</span>记录</div>
+    <div class="tab" data-tab="board"><span class="tab-icon">📊</span>看板</div>
   </div>
+
+  <!-- CONTENT -->
   <div class="content" id="content">
-    <!-- 学员列表页 -->
+
+    <!-- ===== 学员列表 ===== -->
     <div class="page active" id="page-students">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <span style="font-size:14px; color:var(--muted);" id="student-count">共 0 名学员</span>
-        <button class="btn btn-primary" onclick="showStudentModal()">+ 添加学员</button>
+      <div class="section-head" id="students-head">
+        <div>
+          <div class="section-title">学员名册</div>
+          <div class="section-count" id="student-count">共 0 名学员</div>
+        </div>
+        <button class="btn btn--primary coach-only" onclick="showStudentModal()"><span class="ico">＋</span>添加</button>
       </div>
       <div id="student-list"></div>
-      <div class="empty" id="empty-students">
-        <div class="icon">🏸</div>
-        <p>还没有学员，点击上方按钮添加</p>
+      <div class="empty-state" id="empty-students">
+        <div class="empty-icon">🎾</div>
+        <div class="empty-title">还没有学员</div>
+        <div class="empty-desc">点击上方按钮添加你的第一位学员</div>
+      </div>
+
+      <!-- Student: select identity + journal -->
+      <div class="card student-only" id="student-select-card" style="display:none;">
+        <div style="font-size:13px;color:var(--text-dim);font-weight:600;margin-bottom:8px;">👤 选择身份，查看训练记录</div>
+        <select id="view-as-student" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--elevated);color:var(--text);font-size:14px;font-family:var(--font-body);" onchange="renderStudentJournal()">
+          <option value="">-- 我是哪位学员？ --</option>
+        </select>
+        <div id="student-journal" style="margin-top:14px;"></div>
       </div>
     </div>
 
-    <!-- 记课页 -->
+    <!-- ===== 训练记录页 ===== -->
     <div class="page" id="page-lesson">
-      <div class="card" id="lesson-form-card">
-        <h3 style="margin-bottom:12px;">快速记课</h3>
-        <div class="form-group">
-          <label>选择学员</label>
-          <select id="lesson-student" style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px;">
-            <option value="">-- 请选择学员 --</option>
-          </select>
+      <div class="section-title" style="margin-bottom:16px;">训练记录</div>
+
+      <!-- Coach: full lesson recording -->
+      <div class="card coach-only" id="lesson-form-card">
+        <div class="field">
+          <label class="field-label">选择学员</label>
+          <select id="lesson-student"><option value="">-- 请选择学员 --</option></select>
         </div>
-        <div class="form-group">
-          <label>日期</label>
+        <div class="field">
+          <label class="field-label">日期</label>
           <input type="date" id="lesson-date">
         </div>
-        <div class="form-group">
-          <label>训练内容</label>
-          <textarea id="lesson-content" placeholder="例如：正手底线对拉、发球练习、截击训练"></textarea>
+        <div class="field">
+          <label class="field-label">训练内容</label>
+          <textarea id="lesson-content" placeholder="正手底线对拉 · 发球落点控制 · 截击反应训练 …"></textarea>
         </div>
-        <div class="form-group">
-          <label>技术评分（可选，用于追踪进步）</label>
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;" id="ratings-grid">
-            <div class="rating-item"><label>正手</label><div class="rating-row"><input type="range" min="1" max="10" value="5" class="rating" data-dim="forehand"><span class="rating-val">5</span></div></div>
-            <div class="rating-item"><label>反手</label><div class="rating-row"><input type="range" min="1" max="10" value="5" class="rating" data-dim="backhand"><span class="rating-val">5</span></div></div>
-            <div class="rating-item"><label>发球</label><div class="rating-row"><input type="range" min="1" max="10" value="5" class="rating" data-dim="serve"><span class="rating-val">5</span></div></div>
-            <div class="rating-item"><label>截击</label><div class="rating-row"><input type="range" min="1" max="10" value="5" class="rating" data-dim="volley"><span class="rating-val">5</span></div></div>
-            <div class="rating-item"><label>步伐</label><div class="rating-row"><input type="range" min="1" max="10" value="5" class="rating" data-dim="footwork"><span class="rating-val">5</span></div></div>
-            <div class="rating-item"><label>体能</label><div class="rating-row"><input type="range" min="1" max="10" value="5" class="rating" data-dim="fitness"><span class="rating-val">5</span></div></div>
+        <div class="field">
+          <label class="field-label">技术评分 · 1 到 10</label>
+          <div class="ratings-grid" id="ratings-grid">
+            <div class="rating-cell"><div class="rating-cell__label">正手 <span>FH</span></div><div class="rating-cell__row"><input type="range" min="1" max="10" value="5" class="rating" data-dim="forehand"><span class="rating-cell__val">5</span></div></div>
+            <div class="rating-cell"><div class="rating-cell__label">反手 <span>BH</span></div><div class="rating-cell__row"><input type="range" min="1" max="10" value="5" class="rating" data-dim="backhand"><span class="rating-cell__val">5</span></div></div>
+            <div class="rating-cell"><div class="rating-cell__label">发球 <span>SV</span></div><div class="rating-cell__row"><input type="range" min="1" max="10" value="5" class="rating" data-dim="serve"><span class="rating-cell__val">5</span></div></div>
+            <div class="rating-cell"><div class="rating-cell__label">截击 <span>VO</span></div><div class="rating-cell__row"><input type="range" min="1" max="10" value="5" class="rating" data-dim="volley"><span class="rating-cell__val">5</span></div></div>
+            <div class="rating-cell"><div class="rating-cell__label">步伐 <span>FW</span></div><div class="rating-cell__row"><input type="range" min="1" max="10" value="5" class="rating" data-dim="footwork"><span class="rating-cell__val">5</span></div></div>
+            <div class="rating-cell"><div class="rating-cell__label">体能 <span>FT</span></div><div class="rating-cell__row"><input type="range" min="1" max="10" value="5" class="rating" data-dim="fitness"><span class="rating-cell__val">5</span></div></div>
           </div>
         </div>
-        <div class="form-group">
-          <label>备注（课后作业等）</label>
-          <textarea id="lesson-note" placeholder="例如：回去每天练50个发球抛球"></textarea>
+        <div class="field">
+          <label class="field-label">课后作业 / 备注</label>
+          <textarea id="lesson-note" placeholder="回去每天练50个发球抛球 …"></textarea>
         </div>
-        <button class="btn btn-primary btn-block" onclick="recordLesson()" style="margin-top:8px;">✅ 记录（同时消课 -1）</button>
+        <button class="btn btn--primary btn--block" onclick="recordLesson()" style="margin-top:2px;">✓ 记录训练 · 自动消课 -1</button>
       </div>
-      <div style="margin-top:16px;">
-        <h3 style="font-size:15px;margin-bottom:10px;">📋 最近记录</h3>
-        <div class="card" id="recent-logs"></div>
+
+      <!-- Student: training journal -->
+      <div class="card student-only" id="student-journal-form" style="display:none;">
+        <div class="field">
+          <label class="field-label">选择身份</label>
+          <select id="journal-student-select" onchange="renderStudentJournal()"><option value="">-- 我是哪位学员？ --</option></select>
+        </div>
+        <div class="field">
+          <label class="field-label">日期</label>
+          <input type="date" id="journal-date">
+        </div>
+        <div class="field">
+          <label class="field-label">我的训练感受</label>
+          <textarea id="journal-content" placeholder="今天练了什么？感觉怎么样？有什么进步或疑问？"></textarea>
+        </div>
+        <button class="btn btn--primary btn--block" onclick="submitJournal()">✏️ 提交训练笔记</button>
+      </div>
+
+      <!-- Recent logs -->
+      <div style="margin-top:18px;">
+        <div class="section-title" style="font-size:18px;margin-bottom:10px;">最近记录</div>
+        <div class="log-card" id="recent-logs"></div>
       </div>
     </div>
 
-    <!-- 看板页 -->
+    <!-- ===== 看板 ===== -->
     <div class="page" id="page-board">
+      <div class="section-title" style="margin-bottom:14px;">数据看板</div>
       <div class="stat-grid">
-        <div class="stat-card"><div class="stat-num" id="stat-total">0</div><div class="stat-label">总学员数</div></div>
-        <div class="stat-card"><div class="stat-num" id="stat-month">0</div><div class="stat-label">本月课时</div></div>
-        <div class="stat-card"><div class="stat-num" id="stat-avg">-</div><div class="stat-label">综合平均分</div></div>
-        <div class="stat-card"><div class="stat-num" id="stat-low">0</div><div class="stat-label">课时不足(≤2)</div></div>
+        <div class="stat-card st--total"><div class="stat-num" id="stat-total">0</div><div class="stat-label">总学员数</div></div>
+        <div class="stat-card st--month"><div class="stat-num" id="stat-month">0</div><div class="stat-label">本月课时</div></div>
+        <div class="stat-card st--avg"><div class="stat-num" id="stat-avg">—</div><div class="stat-label">综合均分</div></div>
+        <div class="stat-card st--low"><div class="stat-num" id="stat-low">0</div><div class="stat-label">课时不足 ≤2</div></div>
       </div>
-      <div class="card">
-        <h3 style="font-size:15px;margin-bottom:10px;">选择学员查看进度</h3>
-        <select id="board-student" style="width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; font-size:14px;" onchange="renderBoard()">
+      <div class="board-card">
+        <div style="font-size:13px;color:var(--text-dim);font-weight:600;margin-bottom:10px;">📈 选择学员，查看能力雷达图</div>
+        <select id="board-student" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--elevated);color:var(--text);font-size:14px;font-family:var(--font-body);" onchange="renderBoard()">
           <option value="">-- 请选择学员 --</option>
         </select>
-        <div id="board-detail" style="margin-top:12px;"></div>
+        <div id="board-detail" style="margin-top:14px;"></div>
       </div>
     </div>
+
   </div>
 </div>
 
-<!-- 添加/编辑学员弹窗 -->
-<div class="modal-bg" id="student-modal">
+<!-- Student Modal -->
+<div class="modal-overlay" id="student-modal">
   <div class="modal">
-    <h3 id="student-modal-title">添加学员</h3>
+    <div class="modal__title" id="student-modal-title">添加学员</div>
     <input type="hidden" id="edit-student-id">
-    <div class="form-group"><label>姓名</label><input type="text" id="s-name" placeholder="学员姓名"></div>
-    <div class="form-group"><label>手机号</label><input type="tel" id="s-phone" placeholder="手机号（可选）"></div>
-    <div class="form-row">
-      <div class="form-group"><label>水平等级</label><select id="s-level"><option value="1.0">1.0 入门</option><option value="1.5">1.5</option><option value="2.0">2.0 初级</option><option value="2.5">2.5</option><option value="3.0" selected>3.0 中级</option><option value="3.5">3.5</option><option value="4.0">4.0 进阶</option><option value="4.5">4.5</option><option value="5.0">5.0+ 高水平</option></select></div>
-      <div class="form-group"><label>学员类型</label><select id="s-type"><option>成人</option><option>少儿</option></select></div>
+    <div class="field"><label class="field-label">姓名</label><input type="text" id="s-name" placeholder="学员姓名"></div>
+    <div class="field"><label class="field-label">手机号</label><input type="tel" id="s-phone" placeholder="选填"></div>
+    <div class="field-row">
+      <div class="field"><label class="field-label">水平等级</label><select id="s-level"><option value="1.0">1.0 入门</option><option value="1.5">1.5</option><option value="2.0">2.0 初级</option><option value="2.5">2.5</option><option value="3.0" selected>3.0 中级</option><option value="3.5">3.5</option><option value="4.0">4.0 进阶</option><option value="4.5">4.5</option><option value="5.0">5.0+ 高水平</option></select></div>
+      <div class="field"><label class="field-label">学员类型</label><select id="s-type"><option>成人</option><option>少儿</option></select></div>
     </div>
-    <div class="form-row">
-      <div class="form-group"><label>课时总数</label><input type="number" id="s-total" value="10" min="1"></div>
-      <div class="form-group"><label>已上课时（可后改）</label><input type="number" id="s-used" value="0" min="0"></div>
+    <div class="field-row">
+      <div class="field"><label class="field-label">课时总数</label><input type="number" id="s-total" value="10" min="1"></div>
+      <div class="field"><label class="field-label">已消课时</label><input type="number" id="s-used" value="0" min="0"></div>
     </div>
-    <div class="form-group"><label>备注</label><textarea id="s-note" placeholder="特殊需求、伤病情况等"></textarea></div>
-    <div style="display:flex; gap:8px; margin-top:16px;">
-      <button class="btn btn-outline btn-block" onclick="closeStudentModal()">取消</button>
-      <button class="btn btn-primary btn-block" onclick="saveStudent()">保存</button>
+    <div class="field"><label class="field-label">备注</label><textarea id="s-note" placeholder="特殊需求、伤病情况等"></textarea></div>
+    <div class="modal__actions">
+      <button class="btn btn--outline btn--block" onclick="closeStudentModal()">取消</button>
+      <button class="btn btn--primary btn--block" onclick="saveStudent()">保存</button>
     </div>
   </div>
 </div>
@@ -229,424 +529,220 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ==================== 数据层 ====================
-const STORAGE_KEY = 'tennis_coach_data';
+// ==================== DATA LAYER ====================
+const STORAGE_KEY = 'courtedge_data';
+let currentRole = 'coach';
 
 function loadData() {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (raw) return JSON.parse(raw);
-  return { students: [], lessons: [], nextId: 1 };
+  return { students: [], lessons: [], journals: [], nextId: 1 };
 }
-
-function saveData(data) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-}
-
+function saveData(data) { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
 let DATA = loadData();
-
 function persist() { saveData(DATA); }
 
-// ==================== 工具函数 ====================
+// ==================== HELPERS ====================
 function $(sel) { return document.querySelector(sel); }
 function $$(sel) { return document.querySelectorAll(sel); }
-
-function formatDate(dateStr) {
-  const d = new Date(dateStr);
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-
-function remaining(s) { return (s.totalLessons || 0) - (s.usedLessons || 0); }
-
+function formatDate(ds) { const d=new Date(ds); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function remaining(s) { return (s.totalLessons||0)-(s.usedLessons||0); }
 function avatarColor(name) {
-  const colors = ['#E53935','#1E88E5','#43A047','#FB8C00','#8E24AA','#00ACC1','#D81B60','#3949AB'];
-  let hash = 0;
-  for (let c of name) hash = c.charCodeAt(0) + ((hash << 5) - hash);
-  return colors[Math.abs(hash) % colors.length];
+  const clrs = ['#2ecc71','#27ae60','#74b9ff','#f9a825','#e8895b','#e74c3c','#3498db','#9b59b6','#1abc9c','#e67e22'];
+  let h=0; for(let c of name) h=c.charCodeAt(0)+((h<<5)-h);
+  return clrs[Math.abs(h)%clrs.length];
 }
-
 function showToast(msg) {
-  const t = $('#toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  clearTimeout(t._timer);
-  t._timer = setTimeout(() => t.classList.remove('show'), 2000);
+  const t=$('#toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),2000);
 }
 
-// ==================== Tab 切换 ====================
-$$('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    const name = tab.dataset.tab;
-    $$('.tab').forEach(t => t.classList.remove('active'));
-    tab.classList.add('active');
-    $$('.page').forEach(p => p.classList.remove('active'));
-    $(`#page-${name}`).classList.add('active');
-    if (name === 'board') refreshBoard();
+// ==================== ROLE ====================
+function switchRole(role) {
+  currentRole=role;
+  $$('#roleToggle .role-btn').forEach(b=>b.classList.toggle('active',b.dataset.role===role));
+  $('#roleLabel').textContent=role==='coach'?'教练模式 · 管理学员、记录训练、追踪进度':'学员模式 · 查看进度、写训练笔记';
+  applyRoleUI();
+}
+function applyRoleUI() {
+  const isCoach=currentRole==='coach';
+  $$('.coach-only').forEach(el=>el.style.display=isCoach?'':'none');
+  $$('.student-only').forEach(el=>el.style.display=isCoach?'none':'');
+  if(!isCoach) {
+    $('#student-select-card').style.display='';
+    $('#student-journal-form').style.display='';
+    $('#journal-date').value=formatDate(new Date());
+    updateJournalSelects();
+  }
+  renderStudentList(); renderRecentLogs();
+}
+
+// ==================== TABS ====================
+$$('.tab').forEach(tab=>{
+  tab.addEventListener('click',()=>{
+    const n=tab.dataset.tab;
+    $$('.tab').forEach(t=>t.classList.remove('active')); tab.classList.add('active');
+    $$('.page').forEach(p=>p.classList.remove('active')); $(`#page-${n}`).classList.add('active');
+    if(n==='board') refreshBoard();
+    if(n==='lesson'&&currentRole==='student'){updateJournalSelects();$('#journal-date').value=formatDate(new Date());}
   });
 });
 
-// ==================== 学员管理 ====================
+// ==================== STUDENTS ====================
 function renderStudentList() {
-  const list = $('#student-list');
-  const empty = $('#empty-students');
-  const count = $('#student-count');
-  const students = DATA.students;
-
-  count.textContent = `共 ${students.length} 名学员`;
-
-  if (students.length === 0) {
-    list.innerHTML = '';
-    empty.style.display = 'block';
-    return;
-  }
-  empty.style.display = 'none';
-
-  list.innerHTML = students.map(s => {
-    const rem = remaining(s);
-    let cls = '';
-    if (rem <= 0) cls = 'danger';
-    else if (rem <= 2) cls = 'warn';
-    return `
-      <div class="card student-card" style="cursor:pointer;" onclick="editStudent(${s.id})">
+  const list=$('#student-list'), empty=$('#empty-students'), count=$('#student-count');
+  const isCoach=currentRole==='coach', students=DATA.students;
+  count.textContent=`共 ${students.length} 名学员`;
+  if(students.length===0){list.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  list.innerHTML=students.map(s=>{
+    const rem=remaining(s); let cls='ok'; if(rem<=0)cls='danger'; else if(rem<=2)cls='warn';
+    return `<div class="card" style="cursor:${isCoach?'pointer':'default'};" onclick="${isCoach?`editStudent(${s.id})`:''}">
+      <div class="student-row">
         <div class="avatar" style="background:${avatarColor(s.name)};">${s.name[0]}</div>
         <div class="student-info">
-          <div class="name">${s.name} <span style="font-size:11px;color:var(--muted);">${s.level}</span></div>
-          <div class="meta">${s.type} · ${s.phone || '未留手机'}</div>
+          <div class="student-name">${s.name}</div>
+          <div class="student-meta"><span class="level-tag">NTRP ${s.level}</span><span class="type-tag">${s.type}</span>${s.phone?`<span class="type-tag">${s.phone}</span>`:''}</div>
         </div>
-        <div class="lesson-count">
-          <div class="num ${cls}">${rem}</div>
-          <div class="label">剩余课时</div>
-        </div>
-        <span style="cursor:pointer;padding:4px;font-size:18px;" onclick="event.stopPropagation();deleteStudent(${s.id},'${s.name}')">🗑️</span>
-      </div>`;
+        <div class="lesson-badge"><div class="lesson-num ${cls}">${rem}</div><div class="lesson-label">剩余课时</div></div>
+        ${isCoach?`<button class="del-btn" onclick="event.stopPropagation();deleteStudent(${s.id},'${s.name}')">✕</button>`:''}
+      </div></div>`;
   }).join('');
-
-  // Update selects
-  updateStudentSelects();
+  updateStudentSelects(); if(!isCoach) updateJournalSelects();
 }
-
 function updateStudentSelects() {
-  const students = DATA.students;
-  const opts = students.map(s => `<option value="${s.id}">${s.name} (${s.level} · 剩余${remaining(s)}节)</option>`).join('');
-  $$('#lesson-student, #board-student').forEach(sel => {
-    sel.innerHTML = `<option value="">-- 请选择学员 --</option>` + opts;
-  });
+  const students=DATA.students;
+  const opts=students.map(s=>`<option value="${s.id}">${s.name} · ${s.level} · 剩${remaining(s)}节</option>`).join('');
+  $$('#lesson-student,#board-student,#view-as-student').forEach(sel=>{sel.innerHTML=`<option value="">-- 请选择学员 --</option>`+opts;});
 }
-
+function updateJournalSelects() {
+  const students=DATA.students;
+  const opts=students.map(s=>`<option value="${s.id}">${s.name} (${s.level})</option>`).join('');
+  const a=$('#journal-student-select'); if(a)a.innerHTML=`<option value="">-- 我是哪位学员？ --</option>`+opts;
+  const b=$('#view-as-student'); if(b)b.innerHTML=`<option value="">-- 我是哪位学员？ --</option>`+opts;
+}
 function showStudentModal(id) {
-  const modal = $('#student-modal');
-  if (id) {
-    const s = DATA.students.find(st => st.id === id);
-    if (!s) return;
-    $('#student-modal-title').textContent = '编辑学员';
-    $('#edit-student-id').value = s.id;
-    $('#s-name').value = s.name;
-    $('#s-phone').value = s.phone || '';
-    $('#s-level').value = s.level;
-    $('#s-type').value = s.type;
-    $('#s-total').value = s.totalLessons;
-    $('#s-used').value = s.usedLessons;
-    $('#s-note').value = s.note || '';
-  } else {
-    $('#student-modal-title').textContent = '添加学员';
-    $('#edit-student-id').value = '';
-    $('#s-name').value = '';
-    $('#s-phone').value = '';
-    $('#s-level').value = '3.0';
-    $('#s-type').value = '成人';
-    $('#s-total').value = '10';
-    $('#s-used').value = '0';
-    $('#s-note').value = '';
+  const modal=$('#student-modal');
+  if(id){const s=DATA.students.find(st=>st.id===id);if(!s)return;
+    $('#student-modal-title').textContent='编辑学员';$('#edit-student-id').value=s.id;
+    $('#s-name').value=s.name;$('#s-phone').value=s.phone||'';$('#s-level').value=s.level;
+    $('#s-type').value=s.type;$('#s-total').value=s.totalLessons;$('#s-used').value=s.usedLessons;$('#s-note').value=s.note||'';
+  }else{
+    $('#student-modal-title').textContent='添加学员';$('#edit-student-id').value='';
+    $('#s-name').value='';$('#s-phone').value='';$('#s-level').value='3.0';$('#s-type').value='成人';
+    $('#s-total').value='10';$('#s-used').value='0';$('#s-note').value='';
   }
   modal.classList.add('show');
 }
-
-function closeStudentModal() {
-  $('#student-modal').classList.remove('show');
-}
-
+function closeStudentModal(){$('#student-modal').classList.remove('show');}
 function saveStudent() {
-  const name = $('#s-name').value.trim();
-  if (!name) { showToast('请输入姓名'); return; }
-  const id = parseInt($('#edit-student-id').value) || DATA.nextId;
-
-  const existing = DATA.students.find(s => s.id === id);
-  if (existing) {
-    existing.name = name;
-    existing.phone = $('#s-phone').value.trim();
-    existing.level = $('#s-level').value;
-    existing.type = $('#s-type').value;
-    existing.totalLessons = parseInt($('#s-total').value) || 0;
-    existing.usedLessons = parseInt($('#s-used').value) || 0;
-    existing.note = $('#s-note').value.trim();
-  } else {
-    DATA.students.push({
-      id: DATA.nextId++,
-      name,
-      phone: $('#s-phone').value.trim(),
-      level: $('#s-level').value,
-      type: $('#s-type').value,
-      totalLessons: parseInt($('#s-total').value) || 0,
-      usedLessons: parseInt($('#s-used').value) || 0,
-      note: $('#s-note').value.trim(),
-      createdAt: new Date().toISOString()
-    });
-  }
-  persist();
-  closeStudentModal();
-  renderStudentList();
-  renderRecentLogs();
-  showToast('✅ 保存成功');
+  const name=$('#s-name').value.trim();if(!name){showToast('请输入姓名');return;}
+  const id=parseInt($('#edit-student-id').value)||DATA.nextId;
+  const ex=DATA.students.find(s=>s.id===id);
+  if(ex){ex.name=name;ex.phone=$('#s-phone').value.trim();ex.level=$('#s-level').value;ex.type=$('#s-type').value;ex.totalLessons=parseInt($('#s-total').value)||0;ex.usedLessons=parseInt($('#s-used').value)||0;ex.note=$('#s-note').value.trim();}
+  else{DATA.students.push({id:DATA.nextId++,name,phone:$('#s-phone').value.trim(),level:$('#s-level').value,type:$('#s-type').value,totalLessons:parseInt($('#s-total').value)||0,usedLessons:parseInt($('#s-used').value)||0,note:$('#s-note').value.trim(),createdAt:new Date().toISOString()});}
+  persist();closeStudentModal();renderStudentList();renderRecentLogs();showToast('学员已保存 ✓');
+}
+function editStudent(id){showStudentModal(id);}
+function deleteStudent(id,name){
+  if(!confirm(`确定删除「${name}」？\n相关上课记录也会删除。`))return;
+  DATA.students=DATA.students.filter(s=>s.id!==id);DATA.lessons=DATA.lessons.filter(l=>l.studentId!==id);
+  persist();renderStudentList();renderRecentLogs();showToast('已删除');
 }
 
-function editStudent(id) {
-  showStudentModal(id);
-}
-
-function deleteStudent(id, name) {
-  if (!confirm(`确定要删除学员「${name}」吗？\n相关的上课记录也会一并删除。`)) return;
-  DATA.students = DATA.students.filter(s => s.id !== id);
-  DATA.lessons = DATA.lessons.filter(l => l.studentId !== id);
-  persist();
-  renderStudentList();
-  renderRecentLogs();
-  showToast('已删除');
-}
-
-// ==================== 上课记录 ====================
+// ==================== LESSON ====================
 function recordLesson() {
-  const studentId = parseInt($('#lesson-student').value);
-  if (!studentId) { showToast('请选择学员'); return; }
-  const student = DATA.students.find(s => s.id === studentId);
-  if (!student) { showToast('学员不存在'); return; }
-
-  const content = $('#lesson-content').value.trim();
-  const note = $('#lesson-note').value.trim();
-  if (!content && !note) { showToast('请填写训练内容或备注'); return; }
-
-  const ratings = {};
-  $$('.rating').forEach(r => { ratings[r.dataset.dim] = parseInt(r.value); });
-
-  DATA.lessons.push({
-    id: DATA.nextId++,
-    studentId,
-    date: $('#lesson-date').value || formatDate(new Date()),
-    content,
-    note,
-    ratings,
-    createdAt: new Date().toISOString()
-  });
-
-  student.usedLessons += 1;
-  persist();
-
-  // Reset form
-  $('#lesson-content').value = '';
-  $('#lesson-note').value = '';
-  $$('.rating').forEach(r => { r.value = 5; const d = r.parentElement.querySelector('.rating-val'); if (d) d.textContent = '5'; });
-
-  renderStudentList();
-  renderRecentLogs();
-  const rem = remaining(student);
-  const warn = rem <= 2 ? ` ⚠️ 仅剩 ${rem} 节！` : '';
-  showToast(`✅ 记课成功！${student.name} 剩余 ${rem} 节${warn}`);
+  const studentId=parseInt($('#lesson-student').value);if(!studentId){showToast('请选择学员');return;}
+  const student=DATA.students.find(s=>s.id===studentId);if(!student){showToast('学员不存在');return;}
+  const content=$('#lesson-content').value.trim(),note=$('#lesson-note').value.trim();
+  if(!content&&!note){showToast('请填写训练内容或备注');return;}
+  const ratings={};$$('.rating').forEach(r=>{ratings[r.dataset.dim]=parseInt(r.value);});
+  DATA.lessons.push({id:DATA.nextId++,studentId,date:$('#lesson-date').value||formatDate(new Date()),content,note,ratings,createdAt:new Date().toISOString()});
+  student.usedLessons+=1;persist();
+  $('#lesson-content').value='';$('#lesson-note').value='';
+  $$('.rating').forEach(r=>{r.value=5;const d=r.parentElement.querySelector('.rating-cell__val');if(d)d.textContent='5';});
+  renderStudentList();renderRecentLogs();
+  const rem=remaining(student);showToast(`记课成功 · ${student.name} 剩余 ${rem} 节${rem<=2?' ⚠️':''}`);
 }
 
+// ==================== JOURNAL ====================
+function submitJournal() {
+  const studentId=parseInt($('#journal-student-select').value);if(!studentId){showToast('请先选择你是哪位学员');return;}
+  const content=$('#journal-content').value.trim();if(!content){showToast('请写点训练感受');return;}
+  if(!DATA.journals)DATA.journals=[];
+  DATA.journals.push({id:DATA.nextId++,studentId,date:$('#journal-date').value||formatDate(new Date()),content,createdAt:new Date().toISOString()});
+  persist();$('#journal-content').value='';showToast('训练笔记已提交 ✓');
+  renderStudentJournal();renderRecentLogs();
+}
+function renderStudentJournal() {
+  const container=$('#student-journal');if(!container)return;
+  const studentId=parseInt($('#view-as-student').value);if(!studentId){container.innerHTML='';return;}
+  const entries=(DATA.journals||[]).filter(j=>j.studentId===studentId).sort((a,b)=>b.id-a.id).slice(0,20);
+  if(entries.length===0){container.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">还没有训练笔记</div>';return;}
+  container.innerHTML=entries.map(e=>`<div class="journal-entry"><div class="journal-date">📅 ${e.date}</div><div class="journal-text">${e.content}</div></div>`).join('');
+}
+
+// ==================== RECENT LOGS ====================
 function renderRecentLogs() {
-  const container = $('#recent-logs');
-  const logs = [...DATA.lessons].sort((a, b) => b.id - a.id).slice(0, 20);
-
-  if (logs.length === 0) {
-    container.innerHTML = '<div class="empty" style="padding:20px;"><p style="font-size:13px;">还没有上课记录</p></div>';
-    return;
-  }
-
-  container.innerHTML = logs.map(l => {
-    const s = DATA.students.find(st => st.id === l.studentId);
-    const name = s ? s.name : '(已删除)';
-    const dims = l.ratings ? Object.entries(l.ratings).filter(([,v]) => v > 0) : [];
-    const dimLabels = { forehand:'正手', backhand:'反手', serve:'发球', volley:'截击', footwork:'步伐', fitness:'体能' };
-    const tags = dims.map(([k,v]) => `<span class="tag">${dimLabels[k]||k}:${v}</span>`).join('');
-    return `
-      <div class="log-item">
-        <div class="log-date">${l.date} · ${name}</div>
-        <div class="log-content">${l.content || '(仅评分)'}</div>
-        ${tags ? `<div class="log-meta">${tags}</div>` : ''}
-        ${l.note ? `<div class="log-meta" style="color:#E53935;">📌 ${l.note}</div>` : ''}
-      </div>`;
+  const container=$('#recent-logs');if(!container)return;
+  const items=[];
+  DATA.lessons.forEach(l=>items.push({...l,type:'lesson'}));
+  (DATA.journals||[]).forEach(j=>items.push({...j,type:'journal'}));
+  items.sort((a,b)=>b.id-a.id);const recent=items.slice(0,20);
+  if(recent.length===0){container.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px;">还没有训练记录</div>';return;}
+  container.innerHTML=recent.map(item=>{
+    const s=DATA.students.find(st=>st.id===item.studentId);const nm=s?s.name:'(已删除)';
+    if(item.type==='journal')return `<div class="log-item"><div class="log-item__head"><span class="log-item__date">${item.date} · ${nm} 的训练笔记</span></div><div class="log-item__content" style="color:var(--clay);">💬 ${item.content}</div></div>`;
+    const dims=item.ratings?Object.entries(item.ratings).filter(([,v])=>v>0):[];
+    const dl={forehand:'正手',backhand:'反手',serve:'发球',volley:'截击',footwork:'步伐',fitness:'体能'};
+    const tags=dims.map(([k,v])=>`<span class="skill-tag">${dl[k]||k} ${v}</span>`).join('');
+    return `<div class="log-item"><div class="log-item__head"><span class="log-item__date">${item.date}</span><span class="log-item__student">${nm}</span></div><div class="log-item__content">${item.content||'(仅评分)'}</div>${tags?`<div class="log-item__tags">${tags}</div>`:''}${item.note?`<div class="log-item__note">📌 ${item.note}</div>`:''}</div>`;
   }).join('');
 }
 
-// ==================== 看板 ====================
+// ==================== BOARD ====================
 function refreshBoard() {
-  // Stats
-  const students = DATA.students;
-  const now = new Date();
-  const thisMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const monthLessons = DATA.lessons.filter(l => l.date.startsWith(thisMonth)).length;
-  const lowLesson = students.filter(s => remaining(s) <= 2).length;
-
-  $('#stat-total').textContent = students.length;
-  $('#stat-month').textContent = monthLessons;
-
-  if (students.length > 0) {
-    const allRatings = DATA.lessons.flatMap(l => Object.values(l.ratings || {}));
-    const avg = allRatings.length > 0 ? (allRatings.reduce((a,b)=>a+b,0) / allRatings.length).toFixed(1) : '-';
-    $('#stat-avg').textContent = avg;
-  } else {
-    $('#stat-avg').textContent = '-';
-  }
-  $('#stat-low').textContent = lowLesson;
-
-  updateStudentSelects();
-  renderBoard();
+  const students=DATA.students;
+  const now=new Date();const thisMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const monthLessons=DATA.lessons.filter(l=>l.date.startsWith(thisMonth)).length;
+  const lowLesson=students.filter(s=>remaining(s)<=2).length;
+  $('#stat-total').textContent=students.length;$('#stat-month').textContent=monthLessons;
+  if(students.length>0){const all=DATA.lessons.flatMap(l=>Object.values(l.ratings||{}));$('#stat-avg').textContent=all.length>0?(all.reduce((a,b)=>a+b,0)/all.length).toFixed(1):'—';}
+  else $('#stat-avg').textContent='—';
+  $('#stat-low').textContent=lowLesson;
+  updateStudentSelects();renderBoard();
 }
-
 function renderBoard() {
-  const studentId = parseInt($('#board-student').value);
-  const detail = $('#board-detail');
-
-  if (!studentId) {
-    detail.innerHTML = '<div class="empty" style="padding:16px;"><p style="font-size:13px;">选择学员查看详细数据</p></div>';
-    return;
-  }
-
-  const s = DATA.students.find(st => st.id === studentId);
-  if (!s) return;
-
-  const sLessons = DATA.lessons.filter(l => l.studentId === studentId).sort((a, b) => a.date.localeCompare(b.date));
-  const rem = remaining(s);
-  const lessonHistory = sLessons.map(l => l.date).slice(-10);
-
-  // Average ratings
-  const dims = ['forehand', 'backhand', 'serve', 'volley', 'footwork', 'fitness'];
-  const dimLabels = { forehand:'正手', backhand:'反手', serve:'发球', volley:'截击', footwork:'步伐', fitness:'体能' };
-  const avgRatings = {};
-  dims.forEach(d => {
-    const vals = sLessons.map(l => (l.ratings||{})[d]).filter(v => v);
-    avgRatings[d] = vals.length ? (vals.reduce((a,b)=>a+b,0) / vals.length).toFixed(1) : 0;
-  });
-
-  detail.innerHTML = `
-    <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
-      <div class="avatar" style="background:${avatarColor(s.name)};width:36px;height:36px;font-size:16px;">${s.name[0]}</div>
-      <div>
-        <strong>${s.name}</strong>
-        <span style="font-size:12px;color:var(--muted);margin-left:6px;">${s.level} · ${s.type}</span>
-      </div>
-      <div style="margin-left:auto;text-align:center;">
-        <div style="font-size:20px;font-weight:700;color:${rem<=2?'var(--red)':'var(--green)'};">${rem}</div>
-        <div style="font-size:11px;color:var(--muted);">剩余课时</div>
-      </div>
-    </div>
-    <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">
-      共 ${sLessons.length} 节课 | 上次: ${sLessons.length ? sLessons[sLessons.length-1].date : '无'}
-    </div>
-    <div class="radar-wrap"><canvas id="radar" width="260" height="260"></canvas></div>
-    ${s.note ? `<div style="font-size:12px;color:var(--muted);margin-top:8px;">📝 ${s.note}</div>` : ''}
-  `;
-
-  // Draw radar
-  setTimeout(() => drawRadar(avgRatings, dimLabels, dims), 50);
+  const studentId=parseInt($('#board-student').value),detail=$('#board-detail');
+  if(!studentId){detail.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px;">选择学员查看能力雷达图</div>';return;}
+  const s=DATA.students.find(st=>st.id===studentId);if(!s)return;
+  const sLessons=DATA.lessons.filter(l=>l.studentId===studentId).sort((a,b)=>a.date.localeCompare(b.date));
+  const rem=remaining(s);
+  const dims=['forehand','backhand','serve','volley','footwork','fitness'];
+  const dl={forehand:'正手',backhand:'反手',serve:'发球',volley:'截击',footwork:'步伐',fitness:'体能'};
+  const avg={};dims.forEach(d=>{const vals=sLessons.map(l=>(l.ratings||{})[d]).filter(v=>v);avg[d]=vals.length?(vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1):0;});
+  const cls=rem<=2?'low':'ok';
+  detail.innerHTML=`<div class="board-header"><div class="avatar" style="background:${avatarColor(s.name)};width:42px;height:42px;font-size:20px;">${s.name[0]}</div><div class="board-header__info"><div class="board-header__name">${s.name}</div><div class="board-header__sub">${s.level} · ${s.type} · ${sLessons.length} 节课</div></div><div class="board-header__lessons"><div class="board-header__num ${cls}">${rem}</div><div style="font-size:10px;color:var(--muted);">剩余课时</div></div></div><div class="radar-container"><canvas id="radar" width="280" height="280"></canvas></div>${s.note?`<div style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center;">📝 ${s.note}</div>`:''}`;
+  setTimeout(()=>drawRadar(avg,dl,dims),60);
+}
+function drawRadar(ratings,labels,dims) {
+  const canvas=document.getElementById('radar');if(!canvas)return;
+  const ctx=canvas.getContext('2d'),cx=140,cy=140,r=105,n=dims.length;ctx.clearRect(0,0,280,280);
+  for(let lv=2;lv<=10;lv+=2){ctx.beginPath();for(let i=0;i<n;i++){const a=(Math.PI*2/n)*i-Math.PI/2,pr=r*lv/10,x=cx+pr*Math.cos(a),y=cy+pr*Math.sin(a);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.closePath();ctx.strokeStyle=lv===10?'rgba(0,0,0,0.12)':'rgba(0,0,0,0.05)';ctx.lineWidth=lv===10?1.5:1;ctx.stroke();}
+  for(let i=0;i<n;i++){const a=(Math.PI*2/n)*i-Math.PI/2;ctx.beginPath();ctx.moveTo(cx,cy);ctx.lineTo(cx+r*Math.cos(a),cy+r*Math.sin(a));ctx.strokeStyle='rgba(0,0,0,0.06)';ctx.lineWidth=1;ctx.stroke();}
+  ctx.beginPath();for(let i=0;i<n;i++){const val=parseFloat(ratings[dims[i]])||0,a=(Math.PI*2/n)*i-Math.PI/2,pr=r*Math.max(val,0.5)/10,x=cx+pr*Math.cos(a),y=cy+pr*Math.sin(a);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.closePath();
+  ctx.fillStyle='rgba(46,204,113,0.12)';ctx.fill();ctx.strokeStyle='rgba(46,204,113,0.7)';ctx.lineWidth=2.5;ctx.shadowColor='rgba(46,204,113,0.25)';ctx.shadowBlur=10;ctx.stroke();ctx.shadowBlur=0;
+  for(let i=0;i<n;i++){const val=parseFloat(ratings[dims[i]])||0,a=(Math.PI*2/n)*i-Math.PI/2,pr=r*Math.max(val,0.5)/10,x=cx+pr*Math.cos(a),y=cy+pr*Math.sin(a);ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fillStyle='rgba(46,204,113,0.2)';ctx.fill();ctx.beginPath();ctx.arc(x,y,3.2,0,Math.PI*2);ctx.fillStyle='#2ecc71';ctx.fill();const lx=cx+(r+24)*Math.cos(a),ly=cy+(r+24)*Math.sin(a);ctx.fillStyle='#2c3e50';ctx.font='600 11px "Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(`${labels[dims[i]]} ${val}`,lx,ly);}
 }
 
-function drawRadar(ratings, labels, dims) {
-  const canvas = document.getElementById('radar');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  const cx = 130, cy = 130, r = 100;
-  const n = dims.length;
-
-  ctx.clearRect(0, 0, 260, 260);
-
-  // Grid
-  for (let level = 2; level <= 10; level += 2) {
-    ctx.beginPath();
-    for (let i = 0; i < n; i++) {
-      const angle = (Math.PI * 2 / n) * i - Math.PI / 2;
-      const pr = (r * level) / 10;
-      const x = cx + pr * Math.cos(angle);
-      const y = cy + pr * Math.sin(angle);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.strokeStyle = '#e0e0e0';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
-
-  // Axes
-  for (let i = 0; i < n; i++) {
-    const angle = (Math.PI * 2 / n) * i - Math.PI / 2;
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.lineTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle));
-    ctx.strokeStyle = '#e0e0e0';
-    ctx.stroke();
-  }
-
-  // Data
-  ctx.beginPath();
-  for (let i = 0; i < n; i++) {
-    const val = parseFloat(ratings[dims[i]]) || 0;
-    const angle = (Math.PI * 2 / n) * i - Math.PI / 2;
-    const pr = (r * val) / 10;
-    const x = cx + pr * Math.cos(angle);
-    const y = cy + pr * Math.sin(angle);
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  }
-  ctx.closePath();
-  ctx.fillStyle = 'rgba(40, 53, 147, 0.2)';
-  ctx.fill();
-  ctx.strokeStyle = '#283593';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // Dots & labels
-  for (let i = 0; i < n; i++) {
-    const val = parseFloat(ratings[dims[i]]) || 0;
-    const angle = (Math.PI * 2 / n) * i - Math.PI / 2;
-    const pr = (r * val) / 10;
-    const x = cx + pr * Math.cos(angle);
-    const y = cy + pr * Math.sin(angle);
-
-    ctx.beginPath();
-    ctx.arc(x, y, 4, 0, Math.PI * 2);
-    ctx.fillStyle = '#283593';
-    ctx.fill();
-
-    // Label
-    const lx = cx + (r + 20) * Math.cos(angle);
-    const ly = cy + (r + 20) * Math.sin(angle);
-    ctx.fillStyle = '#333';
-    ctx.font = '12px "PingFang SC","Microsoft YaHei",sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`${labels[dims[i]]} ${val}`, lx, ly);
-  }
-}
-
-// ==================== 初始化 ====================
+// ==================== INIT ====================
 function init() {
-  $('#lesson-date').value = formatDate(new Date());
-  renderStudentList();
-  renderRecentLogs();
-  refreshBoard();
-
-  // Rating slider live preview
-  $$('.rating').forEach(slider => {
-    slider.addEventListener('input', (e) => {
-      const val = e.target.value;
-      const display = e.target.parentElement.querySelector('.rating-val');
-      if (display) display.textContent = val;
-    });
-  });
-
-  // Close modal on bg click
-  $('#student-modal').addEventListener('click', (e) => {
-    if (e.target === $('#student-modal')) closeStudentModal();
-  });
+  $('#lesson-date').value=formatDate(new Date());
+  $('#journal-date').value=formatDate(new Date());
+  renderStudentList();renderRecentLogs();refreshBoard();applyRoleUI();
+  $$('.rating').forEach(slider=>{slider.addEventListener('input',(e)=>{const val=e.target.value;const d=e.target.closest('.rating-cell').querySelector('.rating-cell__val');if(d)d.textContent=val;});});
+  $('#student-modal').addEventListener('click',(e)=>{if(e.target===$('#student-modal'))closeStudentModal();});
 }
-
 init();
 </script>
 </body>

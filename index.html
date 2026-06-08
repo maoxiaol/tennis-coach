@@ -761,17 +761,22 @@ let currentRole = 'coach';
 
 async function syncFromCloud() {
   try {
-    const [sRes, lRes, jRes] = await Promise.all([
-      db.from('students').select('*').order('id'),
-      db.from('lessons').select('*').order('id'),
-      db.from('journals').select('*').order('id')
-    ]);
-    DATA.students = sRes.data || [];
-    DATA.lessons = lRes.data || [];
-    DATA.journals = jRes.data || [];
-    console.log('数据同步完成:', DATA.students.length, '名学员,', DATA.lessons.length, '条记录');
+    const sRes = await db.from('students').select('*').order('id');
+    if (sRes.error) { console.error('学生查询失败:', sRes.error); showToast('加载学员失败: ' + sRes.error.message); DATA.students = []; }
+    else { DATA.students = sRes.data || []; }
+
+    const lRes = await db.from('lessons').select('*').order('id');
+    if (lRes.error) { console.error('课程查询失败:', lRes.error); DATA.lessons = []; }
+    else { DATA.lessons = lRes.data || []; }
+
+    const jRes = await db.from('journals').select('*').order('id');
+    if (jRes.error) { console.error('笔记查询失败:', jRes.error); DATA.journals = []; }
+    else { DATA.journals = jRes.data || []; }
+
+    console.log('同步完成:', DATA.students.length, '学员,', DATA.lessons.length, '课程,', DATA.journals.length, '笔记');
   } catch(e) {
-    console.error('同步失败:', e);
+    console.error('同步异常:', e.message);
+    showToast('网络连接失败，请检查网络');
     DATA.students = []; DATA.lessons = []; DATA.journals = [];
   }
 }

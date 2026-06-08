@@ -367,10 +367,79 @@
     .field-row { flex-direction:column; gap:8px; }
     .role-btn { padding:6px 10px; font-size:11px; }
   }
+
+  /* ============ LOGIN PAGE ============ */
+  .login-page {
+    min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:24px; background: linear-gradient(180deg, #f0f7f2 0%, #f7f9f6 60%, #fff 100%);
+  }
+  .login-card {
+    background:#fff; border-radius:var(--radius-xl); padding:32px 24px; width:100%; max-width:380px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.04);
+    border:1px solid var(--border);
+  }
+  .login-logo { text-align:center; margin-bottom:24px; }
+  .login-logo .mark { font-size:48px; display:block; margin-bottom:8px; }
+  .login-logo .title { font-family:var(--font-display); font-size:28px; color:var(--text); letter-spacing:1px; }
+  .login-logo .title span { color:var(--green); }
+  .login-tabs { display:flex; gap:0; margin-bottom:24px; border-radius:var(--radius); overflow:hidden; border:1px solid var(--border); }
+  .login-tab { flex:1; text-align:center; padding:10px; font-size:13px; font-weight:600; cursor:pointer; background:var(--elevated); color:var(--muted); border:none; font-family:var(--font-body); transition:all 0.2s; }
+  .login-tab.active { background:var(--green); color:#fff; }
+  .login-form { display:none; }
+  .login-form.active { display:block; }
+  .login-field { margin-bottom:14px; }
+  .login-field label { display:block; font-size:11px; font-weight:700; color:var(--text-dim); margin-bottom:5px; text-transform:uppercase; letter-spacing:0.5px; }
+  .login-field input, .login-field select { width:100%; padding:12px 14px; border:1.5px solid var(--border); border-radius:var(--radius); font-size:14px; font-family:var(--font-body); background:var(--elevated); transition:border-color 0.2s; }
+  .login-field input:focus, .login-field select:focus { outline:none; border-color:var(--green); box-shadow:0 0 0 3px rgba(46,204,113,0.08); }
+  .login-btn { width:100%; padding:12px; border:none; border-radius:var(--radius); background:var(--green); color:#fff; font-size:14px; font-weight:700; cursor:pointer; font-family:var(--font-body); transition:all 0.2s; margin-top:4px; }
+  .login-btn:hover { background:var(--green-d); transform:translateY(-1px); box-shadow:0 4px 16px rgba(46,204,113,0.3); }
+  .login-link { text-align:center; margin-top:12px; font-size:12px; color:var(--muted); }
+  .login-link a { color:var(--green-d); cursor:pointer; font-weight:600; text-decoration:none; }
+  .login-error { color:var(--danger); font-size:12px; text-align:center; margin-top:8px; min-height:18px; }
+
+  /* Logout button */
+  .logout-btn {
+    background:none; border:none; cursor:pointer; font-size:20px;
+    padding:4px; border-radius:50%; transition:all 0.2s; line-height:1;
+  }
+  .logout-btn:hover { background:var(--danger-bg); }
+  .user-info { font-size:11px; color:var(--green-d); font-weight:600; text-align:center; margin-top:4px; }
 </style>
 </head>
 <body>
-<div class="app">
+
+<!-- ====== LOGIN PAGE ====== -->
+<div id="login-page" class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <span class="mark">🎾</span>
+      <div class="title">Court<span>Edge</span></div>
+    </div>
+    <div class="login-tabs">
+      <button class="login-tab active" data-login="coach">🔑 教练登录</button>
+      <button class="login-tab" data-login="student">📖 学员登录</button>
+    </div>
+
+    <!-- Coach login -->
+    <div class="login-form active" id="form-coach">
+      <div class="login-field"><label>邮箱</label><input type="email" id="coach-email" placeholder="your@email.com"></div>
+      <div class="login-field"><label>密码</label><input type="password" id="coach-password" placeholder="输入密码"></div>
+      <button class="login-btn" onclick="coachLogin()">登 录</button>
+      <div class="login-link">还没账号？<a onclick="coachSignUp()">点此注册</a></div>
+      <div class="login-error" id="coach-error"></div>
+    </div>
+
+    <!-- Student login -->
+    <div class="login-form" id="form-student">
+      <div class="login-field"><label>选择学员</label><select id="login-student-select"><option value="">-- 我是谁？ --</option></select></div>
+      <div class="login-field"><label>PIN 码</label><input type="password" id="login-pin" placeholder="教练给你的密码" maxlength="10"></div>
+      <button class="login-btn" onclick="studentLogin()">进 入</button>
+      <div class="login-error" id="student-error"></div>
+    </div>
+  </div>
+</div>
+
+<div class="app" id="main-app" style="display:none;">
   <!-- HEADER -->
   <div class="header">
     <div class="header-top">
@@ -378,12 +447,10 @@
         <div class="logo-mark">🎾</div>
         <div class="logo-text">Court<span class="accent">Edge</span></div>
       </div>
-      <div class="role-toggle" id="roleToggle">
-        <button class="role-btn active" data-role="coach" onclick="switchRole('coach')">🎾 教练</button>
-        <button class="role-btn" data-role="student" onclick="switchRole('student')">📖 学员</button>
-      </div>
+      <button class="logout-btn" onclick="doLogout()" title="退出登录">🚪</button>
     </div>
     <div class="role-label" id="roleLabel">教练模式 · 管理学员、记录训练、追踪进度</div>
+    <div class="user-info" id="userInfo"></div>
   </div>
 
   <!-- TABS -->
@@ -535,7 +602,126 @@ const SB_URL = 'https://gtlwbhxbhdhwoxuorvbn.supabase.co';
 const SB_KEY = 'sb_publishable_4bhjxIWvPohJdLbAuFa0ZA_ltnxHwsi';
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
-// ==================== DATA CACHE ====================
+// ==================== AUTH STATE ====================
+let authUser = null; // { role: 'coach'|'student', email?: string, student?: object }
+
+// Login page tab switching
+$$('.login-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    const t = tab.dataset.login;
+    $$('.login-tab').forEach(b => b.classList.remove('active')); tab.classList.add('active');
+    $$('.login-form').forEach(f => f.classList.remove('active'));
+    if (t === 'coach') { $('#form-coach').classList.add('active'); $('#coach-error').textContent = ''; }
+    else { $('#form-student').classList.add('active'); loadLoginStudents(); $('#student-error').textContent = ''; }
+  });
+});
+
+async function loadLoginStudents() {
+  try {
+    const res = await sb.from('students').select('id,name,level,login_pin').order('id');
+    const students = res.data || [];
+    const opts = students.map(s => `<option value="${s.id}">${s.name} (${s.level})</option>`).join('');
+    const sel = $('#login-student-select');
+    if (sel) sel.innerHTML = '<option value="">-- 我是谁？ --</option>' + opts;
+  } catch(e) {}
+}
+
+// Coach sign up
+async function coachSignUp() {
+  const email = $('#coach-email').value.trim();
+  const pw = $('#coach-password').value;
+  if (!email || !pw) { $('#coach-error').textContent = '请填写邮箱和密码'; return; }
+  if (pw.length < 6) { $('#coach-error').textContent = '密码至少6位'; return; }
+  const { data, error } = await sb.auth.signUp({ email, password: pw });
+  if (error) { $('#coach-error').textContent = '注册失败: ' + error.message; return; }
+  $('#coach-error').textContent = '';
+  showToast('注册成功！请登录');
+}
+
+// Coach login
+async function coachLogin() {
+  const email = $('#coach-email').value.trim();
+  const pw = $('#coach-password').value;
+  if (!email || !pw) { $('#coach-error').textContent = '请填写邮箱和密码'; return; }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+  if (error) { $('#coach-error').textContent = '登录失败: ' + (error.message === 'Invalid login credentials' ? '邮箱或密码错误' : error.message); return; }
+  authUser = { role: 'coach', email: data.user.email };
+  $('#coach-error').textContent = '';
+  showApp();
+}
+
+// Student login
+async function studentLogin() {
+  const studentId = parseInt($('#login-student-select').value);
+  const pin = $('#login-pin').value.trim();
+  if (!studentId) { $('#student-error').textContent = '请选择学员'; return; }
+  if (!pin) { $('#student-error').textContent = '请输入 PIN 码'; return; }
+  try {
+    const res = await sb.from('students').select('*').eq('id', studentId).single();
+    if (!res.data) { $('#student-error').textContent = '学员不存在'; return; }
+    if (res.data.login_pin !== pin) { $('#student-error').textContent = 'PIN 码错误'; return; }
+    authUser = { role: 'student', student: res.data };
+    $('#student-error').textContent = '';
+    showApp();
+  } catch(e) { $('#student-error').textContent = '验证失败，请重试'; }
+}
+
+// Logout
+async function doLogout() {
+  if (authUser && authUser.role === 'coach') {
+    await sb.auth.signOut();
+  }
+  authUser = null;
+  sessionStorage.removeItem('courtedge_auth');
+  $('#main-app').style.display = 'none';
+  $('#login-page').style.display = '';
+  $('#coach-password').value = '';
+  $('#login-pin').value = '';
+}
+
+// Show main app after login
+function showApp() {
+  $('#login-page').style.display = 'none';
+  $('#main-app').style.display = '';
+  if (authUser.role === 'coach') {
+    $('#roleToggle').style.display = 'flex';
+    $('#userInfo').textContent = '👤 ' + authUser.email;
+    currentRole = 'coach';
+  } else {
+    $('#roleToggle').style.display = 'none';
+    $('#userInfo').textContent = '📖 ' + authUser.student.name + ' (' + authUser.student.level + ')';
+    currentRole = 'student';
+  }
+  // Save auth for page refresh
+  if (authUser.role === 'student') {
+    sessionStorage.setItem('courtedge_auth', JSON.stringify(authUser));
+  }
+  initApp();
+}
+
+// Check auth on page load
+async function checkAuth() {
+  // Check Supabase session (coach)
+  const { data } = await sb.auth.getSession();
+  if (data.session) {
+    authUser = { role: 'coach', email: data.session.user.email };
+    showApp(); return;
+  }
+  // Check student session
+  const saved = sessionStorage.getItem('courtedge_auth');
+  if (saved) {
+    try {
+      authUser = JSON.parse(saved);
+      if (authUser.role === 'student' && authUser.student) {
+        showApp(); return;
+      }
+    } catch(e) {}
+  }
+  // No auth, show login
+  $('#login-page').style.display = '';
+  $('#main-app').style.display = 'none';
+  loadLoginStudents();
+}
 let DATA = { students: [], lessons: [], journals: [] };
 let currentRole = 'coach';
 
@@ -587,6 +773,12 @@ function applyRoleUI() {
     $('#student-journal-form').style.display='';
     $('#journal-date').value=formatDate(new Date());
     updateJournalSelects();
+    // Auto-select logged-in student
+    if (authUser && authUser.student && authUser.student.id) {
+      $('#view-as-student').value = authUser.student.id;
+      $('#journal-student-select').value = authUser.student.id;
+      renderStudentJournal();
+    }
   }
   renderStudentList(); renderRecentLogs();
 }
@@ -761,7 +953,7 @@ function drawRadar(ratings,labels,dims) {
 }
 
 // ==================== INIT ====================
-async function init() {
+async function initApp() {
   showLoading(true);
   await syncFromCloud();
   showLoading(false);
@@ -771,7 +963,8 @@ async function init() {
   $$('.rating').forEach(slider=>{slider.addEventListener('input',(e)=>{const val=e.target.value;const d=e.target.closest('.rating-cell').querySelector('.rating-cell__val');if(d)d.textContent=val;});});
   $('#student-modal').addEventListener('click',(e)=>{if(e.target===$('#student-modal'))closeStudentModal();});
 }
-init();
+// Start: check auth state
+checkAuth();
 </script>
 </body>
 </html>

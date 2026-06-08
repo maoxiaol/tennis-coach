@@ -614,10 +614,23 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
+// Fallback if CDN blocked
+if (typeof supabase === 'undefined') {
+  document.write('<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>');
+}
+</script>
+<script>
 // ==================== SUPABASE ====================
 const SB_URL = 'https://gtlwbhxbhdhwoxuorvbn.supabase.co';
 const SB_KEY = 'sb_publishable_4bhjxIWvPohJdLbAuFa0ZA_ltnxHwsi';
-const sb = supabase.createClient(SB_URL, SB_KEY);
+
+let sb;
+try {
+  sb = supabase.createClient(SB_URL, SB_KEY);
+} catch(e) {
+  console.error('Supabase SDK 加载失败:', e);
+  sb = null;
+}
 
 // REST API for data (all CRUD goes through this)
 const SB_HEADERS = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' };

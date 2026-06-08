@@ -606,25 +606,10 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
-// Fallback if CDN blocked
-if (typeof supabase === 'undefined') {
-  document.write('<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js"><\/script>');
-}
-</script>
-<script>
-// ==================== SUPABASE ====================
+// ==================== SUPABASE CONFIG ====================
 const SB_URL = 'https://gtlwbhxbhdhwoxuorvbn.supabase.co';
 const SB_KEY = 'sb_publishable_4bhjxIWvPohJdLbAuFa0ZA_ltnxHwsi';
-
-let sb;
-try {
-  sb = supabase.createClient(SB_URL, SB_KEY);
-} catch(e) {
-  console.error('Supabase SDK 加载失败:', e);
-  sb = null;
-}
 
 // REST API for data (all CRUD goes through this)
 const SB_HEADERS = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' };
@@ -672,28 +657,42 @@ function showStudentRegister() {
   $('#reg-error').textContent = '';
 }
 
-// Coach sign up
+// Coach sign up (REST API)
 async function coachSignUp() {
   const email = $('#coach-email').value.trim();
   const pw = $('#coach-password').value;
   if (!email || !pw) { $('#coach-error').textContent = '请填写邮箱和密码'; return; }
   if (pw.length < 6) { $('#coach-error').textContent = '密码至少6位'; return; }
-  const { data, error } = await sb.auth.signUp({ email, password: pw });
-  if (error) { $('#coach-error').textContent = '注册失败: ' + error.message; return; }
-  $('#coach-error').textContent = '';
-  showToast('注册成功！请登录');
+  try {
+    const res = await fetch(`${SB_URL}/auth/v1/signup`, {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pw })
+    });
+    if (!res.ok) { const e = await res.json(); $('#coach-error').textContent = '注册失败: ' + e.msg; return; }
+    $('#coach-error').textContent = '';
+    showToast('注册成功！请登录');
+  } catch(e) { $('#coach-error').textContent = '网络错误'; }
 }
 
-// Coach login
+// Coach login (REST API)
 async function coachLogin() {
   const email = $('#coach-email').value.trim();
   const pw = $('#coach-password').value;
   if (!email || !pw) { $('#coach-error').textContent = '请填写邮箱和密码'; return; }
-  const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
-  if (error) { $('#coach-error').textContent = '登录失败: ' + (error.message === 'Invalid login credentials' ? '邮箱或密码错误' : error.message); return; }
-  authUser = { role: 'coach', email: data.user.email };
-  $('#coach-error').textContent = '';
-  showApp();
+  try {
+    const res = await fetch(`${SB_URL}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: pw })
+    });
+    if (!res.ok) { $('#coach-error').textContent = '邮箱或密码错误'; return; }
+    const data = await res.json();
+    authUser = { role: 'coach', email: data.user.email, token: data.access_token };
+    sessionStorage.setItem('courtedge_coach', JSON.stringify(authUser));
+    $('#coach-error').textContent = '';
+    showApp();
+  } catch(e) { $('#coach-error').textContent = '网络错误'; }
 }
 
 // Student login
@@ -735,10 +734,11 @@ async function studentRegister() {
 
 // Logout
 async function doLogout() {
-  if (authUser && authUser.role === 'coach') {
-    await sb.auth.signOut();
+  if (authUser && authUser.role === 'coach' && authUser.token) {
+    try { await fetch(`${SB_URL}/auth/v1/logout`, { method: 'POST', headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + authUser.token } }); } catch(e) {}
   }
   authUser = null;
+  sessionStorage.removeItem('courtedge_coach');
   sessionStorage.removeItem('courtedge_auth');
   $('#main-app').style.display = 'none';
   $('#login-page').style.display = '';
@@ -766,13 +766,17 @@ function showApp() {
 
 // Check auth on page load
 async function checkAuth() {
-  // Check Supabase session (coach)
-  const { data } = await sb.auth.getSession();
-  if (data.session) {
-    authUser = { role: 'coach', email: data.session.user.email };
-    showApp(); return;
+  // Check coach session (sessionStorage)
+  const coach = sessionStorage.getItem('courtedge_coach');
+  if (coach) {
+    try {
+      authUser = JSON.parse(coach);
+      if (authUser.role === 'coach' && authUser.email) {
+        showApp(); return;
+      }
+    } catch(e) {}
   }
-  // Check student session
+  // Check student session (sessionStorage)
   const saved = sessionStorage.getItem('courtedge_auth');
   if (saved) {
     try {

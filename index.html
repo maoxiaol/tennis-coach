@@ -768,7 +768,11 @@ async function syncFromCloud() {
     DATA.students = sRes.data || [];
     DATA.lessons = lRes.data || [];
     DATA.journals = jRes.data || [];
-  } catch(e) { console.error('同步失败:', e); }
+    console.log('数据同步完成:', DATA.students.length, '名学员,', DATA.lessons.length, '条记录');
+  } catch(e) {
+    console.error('同步失败:', e);
+    DATA.students = []; DATA.lessons = []; DATA.journals = [];
+  }
 }
 
 // ==================== HELPERS ====================

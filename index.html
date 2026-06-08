@@ -612,7 +612,31 @@
 const SB_URL = 'https://gtlwbhxbhdhwoxuorvbn.supabase.co';
 const SB_KEY = 'sb_publishable_4bhjxIWvPohJdLbAuFa0ZA_ltnxHwsi';
 const sb = supabase.createClient(SB_URL, SB_KEY);
-const db = supabase.createClient(SB_URL, SB_KEY); // separate client for data, unaffected by auth state
+
+// REST API for data (more reliable than SDK)
+const SB_HEADERS = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' };
+const SB_URL = 'https://gtlwbhxbhdhwoxuorvbn.supabase.co';
+const SB_KEY = 'sb_publishable_4bhjxIWvPohJdLbAuFa0ZA_ltnxHwsi';
+const SB_HEADERS = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' };
+
+async function api(method, table, body, query) {
+  let url = `${SB_URL}/rest/v1/${table}`;
+  if (query) url += '?' + query;
+  const opts = { method, headers: SB_HEADERS };
+  if (body) {
+    opts.body = JSON.stringify(body);
+    opts.headers['Prefer'] = 'return=representation';
+  }
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    const err = await res.text();
+    console.error(`API ${method} ${table} 失败:`, err);
+    return { data: null, error: { message: err } };
+  }
+  if (method === 'DELETE') return { data: null, error: null };
+  const text = await res.text();
+  return { data: text ? JSON.parse(text) : [], error: null };
+}
 
 // ==================== AUTH STATE ====================
 let authUser = null; // { role: 'coach'|'student', email?: string, student?: object }
@@ -670,10 +694,11 @@ async function studentLogin() {
   if (!phone) { $('#student-error').textContent = '请输入手机号'; return; }
   if (!pin) { $('#student-error').textContent = '请输入密码'; return; }
   try {
-    const res = await db.from('students').select('*').eq('phone', phone).single();
-    if (!res.data) { $('#student-error').textContent = '手机号未注册'; return; }
-    if (res.data.login_pin !== pin) { $('#student-error').textContent = '密码错误'; return; }
-    authUser = { role: 'student', student: res.data };
+    const res = await api('GET', 'students', null, 'select=*&phone=eq.'+encodeURIComponent(phone));
+    const student = (res.data && res.data.length > 0) ? res.data[0] : null;
+    if (!student) { $('#student-error').textContent = '手机号未注册'; return; }
+    if (student.login_pin !== pin) { $('#student-error').textContent = '密码错误'; return; }
+    authUser = { role: 'student', student };
     $('#student-error').textContent = '';
     showApp();
   } catch(e) { $('#student-error').textContent = '登录失败，请重试'; }
@@ -689,14 +714,12 @@ async function studentRegister() {
   if (!pin || pin.length < 4) { $('#reg-error').textContent = '密码至少4位'; return; }
   try {
     // Check if phone already exists
-    const check = await db.from('students').select('id').eq('phone', phone).single();
-    if (check.data) { $('#reg-error').textContent = '该手机号已注册，请直接登录'; return; }
+    const check = await api('GET', 'students', null, 'select=id&phone=eq.'+encodeURIComponent(phone));
+    if (check.data && check.data.length > 0) { $('#reg-error').textContent = '该手机号已注册，请直接登录'; return; }
     // Create student
-    const { data, error } = await db.from('students').insert({
-      name, phone, login_pin: pin, level:'3.0', type:'成人', total_lessons:0, used_lessons:0
-    }).select().single();
-    if (error) { $('#reg-error').textContent = '注册失败: ' + error.message; return; }
-    authUser = { role: 'student', student: data };
+    const res = await api('POST', 'students', {name, phone, login_pin: pin, level:'3.0', type:'成人', total_lessons:0, used_lessons:0});
+    if (res.error || !res.data || res.data.length === 0) { $('#reg-error').textContent = '注册失败'; return; }
+    authUser = { role: 'student', student: res.data[0] };
     showApp();
   } catch(e) { $('#reg-error').textContent = '注册失败，请重试'; }
 }
@@ -761,22 +784,17 @@ let currentRole = 'coach';
 
 async function syncFromCloud() {
   try {
-    const sRes = await db.from('students').select('*').order('id');
-    if (sRes.error) { console.error('学生查询失败:', sRes.error); showToast('加载学员失败: ' + sRes.error.message); DATA.students = []; }
-    else { DATA.students = sRes.data || []; }
-
-    const lRes = await db.from('lessons').select('*').order('id');
-    if (lRes.error) { console.error('课程查询失败:', lRes.error); DATA.lessons = []; }
-    else { DATA.lessons = lRes.data || []; }
-
-    const jRes = await db.from('journals').select('*').order('id');
-    if (jRes.error) { console.error('笔记查询失败:', jRes.error); DATA.journals = []; }
-    else { DATA.journals = jRes.data || []; }
-
+    const sRes = await api('GET', 'students', null, 'select=*&order=id');
+    DATA.students = (sRes.data && !sRes.error) ? sRes.data : [];
+    const lRes = await api('GET', 'lessons', null, 'select=*&order=id');
+    DATA.lessons = (lRes.data && !lRes.error) ? lRes.data : [];
+    const jRes = await api('GET', 'journals', null, 'select=*&order=id');
+    DATA.journals = (jRes.data && !jRes.error) ? jRes.data : [];
     console.log('同步完成:', DATA.students.length, '学员,', DATA.lessons.length, '课程,', DATA.journals.length, '笔记');
+    if (DATA.students.length > 0) console.log('学员列表:', DATA.students.map(s=>s.name).join(', '));
   } catch(e) {
     console.error('同步异常:', e.message);
-    showToast('网络连接失败，请检查网络');
+    showToast('网络连接失败');
     DATA.students = []; DATA.lessons = []; DATA.journals = [];
   }
 }
@@ -894,8 +912,8 @@ async function saveStudent() {
     login_pin:$('#s-pin').value.trim(), note:$('#s-note').value.trim()
   };
   showLoading(true);
-  if(id>0){await db.from('students').update(data).eq('id',id);}
-  else{await db.from('students').insert(data);}
+  if(id>0){await api('PATCH', 'students', data, 'id=eq.'+id);}
+  else{await api('POST', 'students', data);}
   await syncFromCloud();showLoading(false);
   closeStudentModal();renderStudentList();renderRecentLogs();showToast('学员已保存 ✓');
 }
@@ -903,7 +921,7 @@ function editStudent(id){showStudentModal(id);}
 async function deleteStudent(id,name){
   if(!confirm(`确定删除「${name}」？\n相关上课记录也会删除。`))return;
   showLoading(true);
-  await db.from('students').delete().eq('id',id);
+  await api('DELETE', 'students', null, 'id=eq.'+id);
   await syncFromCloud();showLoading(false);
   renderStudentList();renderRecentLogs();showToast('已删除');
 }
@@ -916,8 +934,8 @@ async function recordLesson() {
   if(!content&&!note){showToast('请填写训练内容或备注');return;}
   const ratings={};$$('.rating').forEach(r=>{ratings[r.dataset.dim]=parseInt(r.value);});
   showLoading(true);
-  await db.from('lessons').insert({student_id:studentId,date:$('#lesson-date').value||formatDate(new Date()),content,note,ratings});
-  await db.from('students').update({used_lessons:(student.used_lessons||0)+1}).eq('id',studentId);
+  await api('POST', 'lessons', {student_id:studentId,date:$('#lesson-date').value||formatDate(new Date()),content,note,ratings});
+  await api('PATCH', 'students', {used_lessons:(student.used_lessons||0)+1}, 'id=eq.'+studentId);
   await syncFromCloud();showLoading(false);
   $('#lesson-content').value='';$('#lesson-note').value='';
   $$('.rating').forEach(r=>{r.value=5;const d=r.parentElement.querySelector('.rating-cell__val');if(d)d.textContent='5';});
@@ -930,7 +948,7 @@ async function submitJournal() {
   const studentId=parseInt($('#journal-student-select').value);if(!studentId){showToast('请先选择你是哪位学员');return;}
   const content=$('#journal-content').value.trim();if(!content){showToast('请写点训练感受');return;}
   showLoading(true);
-  await db.from('journals').insert({student_id:studentId,date:$('#journal-date').value||formatDate(new Date()),content});
+  await api('POST', 'journals', {student_id:studentId,date:$('#journal-date').value||formatDate(new Date()),content});
   await syncFromCloud();showLoading(false);
   $('#journal-content').value='';showToast('训练笔记已提交 ✓');
   renderStudentJournal();renderRecentLogs();

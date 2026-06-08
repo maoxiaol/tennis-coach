@@ -619,10 +619,7 @@ const SB_URL = 'https://gtlwbhxbhdhwoxuorvbn.supabase.co';
 const SB_KEY = 'sb_publishable_4bhjxIWvPohJdLbAuFa0ZA_ltnxHwsi';
 const sb = supabase.createClient(SB_URL, SB_KEY);
 
-// REST API for data (more reliable than SDK)
-const SB_HEADERS = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' };
-const SB_URL = 'https://gtlwbhxbhdhwoxuorvbn.supabase.co';
-const SB_KEY = 'sb_publishable_4bhjxIWvPohJdLbAuFa0ZA_ltnxHwsi';
+// REST API for data (all CRUD goes through this)
 const SB_HEADERS = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json' };
 
 async function api(method, table, body, query) {

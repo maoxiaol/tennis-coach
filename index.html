@@ -612,6 +612,7 @@
 const SB_URL = 'https://gtlwbhxbhdhwoxuorvbn.supabase.co';
 const SB_KEY = 'sb_publishable_4bhjxIWvPohJdLbAuFa0ZA_ltnxHwsi';
 const sb = supabase.createClient(SB_URL, SB_KEY);
+const db = supabase.createClient(SB_URL, SB_KEY); // separate client for data, unaffected by auth state
 
 // ==================== AUTH STATE ====================
 let authUser = null; // { role: 'coach'|'student', email?: string, student?: object }
@@ -669,7 +670,7 @@ async function studentLogin() {
   if (!phone) { $('#student-error').textContent = '请输入手机号'; return; }
   if (!pin) { $('#student-error').textContent = '请输入密码'; return; }
   try {
-    const res = await sb.from('students').select('*').eq('phone', phone).single();
+    const res = await db.from('students').select('*').eq('phone', phone).single();
     if (!res.data) { $('#student-error').textContent = '手机号未注册'; return; }
     if (res.data.login_pin !== pin) { $('#student-error').textContent = '密码错误'; return; }
     authUser = { role: 'student', student: res.data };
@@ -688,10 +689,10 @@ async function studentRegister() {
   if (!pin || pin.length < 4) { $('#reg-error').textContent = '密码至少4位'; return; }
   try {
     // Check if phone already exists
-    const check = await sb.from('students').select('id').eq('phone', phone).single();
+    const check = await db.from('students').select('id').eq('phone', phone).single();
     if (check.data) { $('#reg-error').textContent = '该手机号已注册，请直接登录'; return; }
     // Create student
-    const { data, error } = await sb.from('students').insert({
+    const { data, error } = await db.from('students').insert({
       name, phone, login_pin: pin, level:'3.0', type:'成人', total_lessons:0, used_lessons:0
     }).select().single();
     if (error) { $('#reg-error').textContent = '注册失败: ' + error.message; return; }
@@ -761,9 +762,9 @@ let currentRole = 'coach';
 async function syncFromCloud() {
   try {
     const [sRes, lRes, jRes] = await Promise.all([
-      sb.from('students').select('*').order('id'),
-      sb.from('lessons').select('*').order('id'),
-      sb.from('journals').select('*').order('id')
+      db.from('students').select('*').order('id'),
+      db.from('lessons').select('*').order('id'),
+      db.from('journals').select('*').order('id')
     ]);
     DATA.students = sRes.data || [];
     DATA.lessons = lRes.data || [];
@@ -888,8 +889,8 @@ async function saveStudent() {
     login_pin:$('#s-pin').value.trim(), note:$('#s-note').value.trim()
   };
   showLoading(true);
-  if(id>0){await sb.from('students').update(data).eq('id',id);}
-  else{await sb.from('students').insert(data);}
+  if(id>0){await db.from('students').update(data).eq('id',id);}
+  else{await db.from('students').insert(data);}
   await syncFromCloud();showLoading(false);
   closeStudentModal();renderStudentList();renderRecentLogs();showToast('学员已保存 ✓');
 }
@@ -897,7 +898,7 @@ function editStudent(id){showStudentModal(id);}
 async function deleteStudent(id,name){
   if(!confirm(`确定删除「${name}」？\n相关上课记录也会删除。`))return;
   showLoading(true);
-  await sb.from('students').delete().eq('id',id);
+  await db.from('students').delete().eq('id',id);
   await syncFromCloud();showLoading(false);
   renderStudentList();renderRecentLogs();showToast('已删除');
 }
@@ -910,8 +911,8 @@ async function recordLesson() {
   if(!content&&!note){showToast('请填写训练内容或备注');return;}
   const ratings={};$$('.rating').forEach(r=>{ratings[r.dataset.dim]=parseInt(r.value);});
   showLoading(true);
-  await sb.from('lessons').insert({student_id:studentId,date:$('#lesson-date').value||formatDate(new Date()),content,note,ratings});
-  await sb.from('students').update({used_lessons:(student.used_lessons||0)+1}).eq('id',studentId);
+  await db.from('lessons').insert({student_id:studentId,date:$('#lesson-date').value||formatDate(new Date()),content,note,ratings});
+  await db.from('students').update({used_lessons:(student.used_lessons||0)+1}).eq('id',studentId);
   await syncFromCloud();showLoading(false);
   $('#lesson-content').value='';$('#lesson-note').value='';
   $$('.rating').forEach(r=>{r.value=5;const d=r.parentElement.querySelector('.rating-cell__val');if(d)d.textContent='5';});
@@ -924,7 +925,7 @@ async function submitJournal() {
   const studentId=parseInt($('#journal-student-select').value);if(!studentId){showToast('请先选择你是哪位学员');return;}
   const content=$('#journal-content').value.trim();if(!content){showToast('请写点训练感受');return;}
   showLoading(true);
-  await sb.from('journals').insert({student_id:studentId,date:$('#journal-date').value||formatDate(new Date()),content});
+  await db.from('journals').insert({student_id:studentId,date:$('#journal-date').value||formatDate(new Date()),content});
   await syncFromCloud();showLoading(false);
   $('#journal-content').value='';showToast('训练笔记已提交 ✓');
   renderStudentJournal();renderRecentLogs();

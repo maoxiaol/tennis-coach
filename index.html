@@ -457,7 +457,13 @@
         <div class="logo-mark">🎾</div>
         <div class="logo-text">Court<span class="accent">Edge</span></div>
       </div>
-      <button class="logout-btn" onclick="doLogout()" title="退出登录">🚪</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="role-toggle" id="roleToggle">
+          <button class="role-btn active" data-role="coach" onclick="switchRole('coach')">🎾 教练</button>
+          <button class="role-btn" data-role="student" onclick="switchRole('student')">📖 学员</button>
+        </div>
+        <button class="logout-btn" onclick="doLogout()" title="退出登录">🚪</button>
+      </div>
     </div>
     <div class="role-label" id="roleLabel">教练模式 · 管理学员、记录训练、追踪进度</div>
     <div class="user-info" id="userInfo"></div>

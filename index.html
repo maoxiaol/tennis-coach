@@ -869,7 +869,12 @@ $$('.tab').forEach(tab=>{
 // ==================== STUDENTS ====================
 function renderStudentList() {
   const list=$('#student-list'), empty=$('#empty-students'), count=$('#student-count');
-  const isCoach=currentRole==='coach', students=DATA.students;
+  const isCoach=currentRole==='coach';
+  // Student can only see themselves
+  let students = DATA.students;
+  if (!isCoach && authUser && authUser.student) {
+    students = students.filter(s => s.id === authUser.student.id);
+  }
   count.textContent=`共 ${students.length} 名学员`;
   if(students.length===0){list.innerHTML='';empty.style.display='block';return;}
   empty.style.display='none';
@@ -889,7 +894,11 @@ function renderStudentList() {
   updateStudentSelects(); if(!isCoach) updateJournalSelects();
 }
 function updateStudentSelects() {
-  const students=DATA.students;
+  const isCoach=currentRole==='coach';
+  let students=DATA.students;
+  if (!isCoach && authUser && authUser.student) {
+    students=students.filter(s=>s.id===authUser.student.id);
+  }
   const opts=students.map(s=>`<option value="${s.id}">${s.name} · ${s.level} · 剩${remaining(s)}节</option>`).join('');
   $$('#lesson-student,#board-student,#view-as-student').forEach(sel=>{sel.innerHTML=`<option value="">-- 请选择学员 --</option>`+opts;});
 }
@@ -975,9 +984,13 @@ function renderStudentJournal() {
 // ==================== RECENT LOGS ====================
 function renderRecentLogs() {
   const container=$('#recent-logs');if(!container)return;
-  const items=[];
+  let items=[];
   DATA.lessons.forEach(l=>items.push({...l,type:'lesson'}));
   (DATA.journals||[]).forEach(j=>items.push({...j,type:'journal'}));
+  // Student can only see their own records
+  if (currentRole !== 'coach' && authUser && authUser.student) {
+    items = items.filter(i => i.student_id === authUser.student.id);
+  }
   items.sort((a,b)=>b.id-a.id);const recent=items.slice(0,20);
   if(recent.length===0){container.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px;">还没有训练记录</div>';return;}
   container.innerHTML=recent.map(item=>{

@@ -903,10 +903,14 @@ function updateStudentSelects() {
   $$('#lesson-student,#board-student,#view-as-student').forEach(sel=>{sel.innerHTML=`<option value="">-- 请选择学员 --</option>`+opts;});
 }
 function updateJournalSelects() {
-  const students=DATA.students;
+  const isCoach=currentRole==='coach';
+  let students=DATA.students;
+  if (!isCoach && authUser && authUser.student) {
+    students=students.filter(s=>s.id===authUser.student.id);
+  }
   const opts=students.map(s=>`<option value="${s.id}">${s.name} (${s.level})</option>`).join('');
-  const a=$('#journal-student-select'); if(a)a.innerHTML=`<option value="">-- 我是哪位学员？ --</option>`+opts;
-  const b=$('#view-as-student'); if(b)b.innerHTML=`<option value="">-- 我是哪位学员？ --</option>`+opts;
+  const a=$('#journal-student-select'); if(a){a.innerHTML=`<option value="">-- 我是哪位学员？ --</option>`+opts; if(students.length===1) a.value=students[0].id;}
+  const b=$('#view-as-student'); if(b){b.innerHTML=`<option value="">-- 我是哪位学员？ --</option>`+opts; if(students.length===1) b.value=students[0].id;}
 }
 function showStudentModal(id) {
   const modal=$('#student-modal');

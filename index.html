@@ -251,6 +251,10 @@
   .rating-cell__label span { font-size:10px; color:var(--muted); font-weight:400; }
   .rating-cell__row { display:flex; align-items:center; gap:10px; }
   .rating-cell__row input[type=range] { flex:1; accent-color:var(--green); height:4px; }
+  .drill-chip { display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border:1.5px solid var(--border);border-radius:20px;font-size:13px;cursor:pointer;background:var(--surface);transition:all 0.15s;user-select:none; }
+  .drill-chip:has(input:checked) { background:var(--green-pale); border-color:var(--green); color:var(--green-d); font-weight:600; }
+  .drill-chip input { display:none; }
+
   .rating-cell__val {
     width:28px; height:28px; border-radius:50%; flex-shrink:0;
     display:flex; align-items:center; justify-content:center;
@@ -550,8 +554,21 @@
           <input type="date" id="lesson-date">
         </div>
         <div class="field">
-          <label class="field-label">训练内容</label>
-          <textarea id="lesson-content" placeholder="正手底线对拉 · 发球落点控制 · 截击反应训练 …"></textarea>
+          <label class="field-label">训练内容（多选）</label>
+          <div id="drill-options" style="display:flex;flex-wrap:wrap;gap:6px;">
+            <label class="drill-chip"><input type="checkbox" value="正手底线"> 正手底线</label>
+            <label class="drill-chip"><input type="checkbox" value="反手底线"> 反手底线</label>
+            <label class="drill-chip"><input type="checkbox" value="正手截击"> 正手截击</label>
+            <label class="drill-chip"><input type="checkbox" value="反手截击"> 反手截击</label>
+            <label class="drill-chip"><input type="checkbox" value="发球"> 发球</label>
+            <label class="drill-chip"><input type="checkbox" value="接发球"> 接发球</label>
+            <label class="drill-chip"><input type="checkbox" value="高压球"> 高压球</label>
+            <label class="drill-chip"><input type="checkbox" value="网前小球"> 网前小球</label>
+            <label class="drill-chip"><input type="checkbox" value="步伐训练"> 步伐训练</label>
+            <label class="drill-chip"><input type="checkbox" value="体能训练"> 体能训练</label>
+            <label class="drill-chip"><input type="checkbox" value="比赛实战"> 比赛实战</label>
+            <label class="drill-chip"><input type="checkbox" value="多球练习"> 多球练习</label>
+          </div>
         </div>
         <div class="field">
           <label class="field-label">技术评分 · 1 到 10</label>
@@ -1284,8 +1301,10 @@ async function deleteStudent(id,name){
 async function recordLesson() {
   const studentId=parseInt($('#lesson-student').value);if(!studentId){showToast('请选择学员');return;}
   const student=DATA.students.find(s=>s.id===studentId);if(!student){showToast('学员不存在');return;}
-  const content=$('#lesson-content').value.trim(),note=$('#lesson-note').value.trim();
-  if(!content&&!note){showToast('请填写训练内容或备注');return;}
+  const drills = [...$$('#drill-options input:checked')].map(cb => cb.value);
+  const content = drills.join('、');
+  const note=$('#lesson-note').value.trim();
+  if(!content&&!note){showToast('请选择训练内容或填写备注');return;}
   const ratings={};$$('.rating').forEach(r=>{ratings[r.dataset.dim]=parseInt(r.value);});
   showLoading(true);
   await api('POST', 'lessons', {student_id:studentId,date:$('#lesson-date').value||formatDate(new Date()),content,note,ratings,coach_id: authUser.coach ? authUser.coach.id : null});
@@ -1303,7 +1322,8 @@ async function recordLesson() {
   }
   await api('PATCH', 'students', {used_lessons:(student.used_lessons||0)+1}, 'id=eq.'+studentId);
   await syncFromCloud();showLoading(false);
-  $('#lesson-content').value='';$('#lesson-note').value='';$('#lesson-video').value='';
+  $$('#drill-options input:checked').forEach(cb=>cb.checked=false);
+  $('#lesson-note').value='';$('#lesson-video').value='';
   $$('.rating').forEach(r=>{r.value=5;const d=r.parentElement.querySelector('.rating-cell__val');if(d)d.textContent='5';});
   renderStudentList();renderRecentLogs();
   const rem=remaining(student);showToast(`记课成功 · ${student.name} 剩余 ${rem} 节${rem<=2?' ⚠️':''}`);

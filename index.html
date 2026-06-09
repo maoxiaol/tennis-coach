@@ -875,6 +875,11 @@ function $(sel) { return document.querySelector(sel); }
 function $$(sel) { return document.querySelectorAll(sel); }
 
 
+// ==================== HELPERS ====================
+function $(sel) { return document.querySelector(sel); }
+function $$(sel) { return document.querySelectorAll(sel); }
+
+
 // Login page tab switching
 $$('.login-tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -2243,7 +2248,7 @@ function loadAiVideoList() {
       var s = students.find(function(st) { return st.id === v.student_id; });
       var sName = s ? s.name : '未知';
       var hasAi = v.ai_ratings || (v.note && v.note.length > 15);
-      return `<div class="card" style="cursor:pointer;padding:10px;margin-bottom:4px;" onclick="selectAiVideo('' + v.url.replace(/'/g, '') + '',' + v.id + ',\"' + (v.note||'').replace(/"/g, '') + '\")">`  +
+      return `<div class="card" style="cursor:pointer;padding:10px;margin-bottom:4px;" onclick="clickVideo(this)" data-vid="${v.id}" data-url="${v.url.replace(/'/g,'')}" data-note="${(v.note||'').replace(/\"/g,'')}">`  +
         '<div style="display:flex;justify-content:space-between;align-items:center;">' +
         '<span style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;">\U0001f3ac 视频 #' + (videos.length - i) + '</span>' +
         '<span style="font-size:11px;color:var(--muted);">' + sName + ' · ' + ((v.created_at||'').substring(0,10)||'') + '</span>' +
@@ -2254,6 +2259,8 @@ function loadAiVideoList() {
     container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--danger);font-size:13px;">加载失败</div>';
   }
 }
+
+function clickVideo(el) { selectAiVideo(el.dataset.url, el.dataset.vid, el.dataset.note || ''); }
 
 function selectAiVideo(url, id, note) {
   _aiCurrentVideoUrl = url;
@@ -2422,5 +2429,4 @@ async function initApp() {
   $('#detail-modal').addEventListener('click',(e)=>{if(e.target===$('#detail-modal'))closeDetailModal();});
 }
 // Start: check auth state
-checkAuth();
-</script>
+checkAuth();

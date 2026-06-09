@@ -518,13 +518,10 @@
         <div class="empty-desc">点击上方按钮添加你的第一位学员</div>
       </div>
 
-      <!-- Student: select identity + journal -->
-      <div class="card student-only" id="student-select-card" style="display:none;">
-        <div style="font-size:13px;color:var(--text-dim);font-weight:600;margin-bottom:8px;">👤 选择身份，查看训练记录</div>
-        <select id="view-as-student" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--elevated);color:var(--text);font-size:14px;font-family:var(--font-body);" onchange="renderStudentJournal()">
-          <option value="">-- 我是哪位学员？ --</option>
-        </select>
-        <div id="student-journal" style="margin-top:14px;"></div>
+      <!-- Student: calendar + journal -->
+      <div class="student-only" id="student-home" style="display:none;">
+        <div id="student-cal-area"></div>
+        <div id="student-journal" style="margin-top:12px;"></div>
       </div>
     </div>
 
@@ -789,10 +786,12 @@ function showApp() {
     $('#userInfo').textContent = '👤 ' + c.name + ' | 邀请码: ' + c.invite_code;
     $('#inviteCodeDisplay').textContent = c.invite_code;
     $('#inviteBox').style.display = '';
+    $('#roleLabel').textContent = '教练模式';
     currentRole = 'coach';
   } else {
     $('#userInfo').textContent = '📖 ' + authUser.student.name + ' | 教练: ' + (authUser.coachName || '');
     $('#inviteBox').style.display = 'none';
+    $('#roleLabel').textContent = '学员模式';
     currentRole = 'student';
     sessionStorage.setItem('courtedge_auth', JSON.stringify(authUser));
   }
@@ -883,18 +882,87 @@ function applyRoleUI() {
   $$('.coach-only').forEach(el=>el.style.display=isCoach?'':'none');
   $$('.student-only').forEach(el=>el.style.display=isCoach?'none':'');
   if(!isCoach) {
-    // Student view: auto-select self in all dropdowns
     const sid = authUser && authUser.student ? authUser.student.id : null;
     if (sid) {
       $('#board-student').value = sid;
-      $('#view-as-student').value = sid;
       $('#journal-student-select').value = sid;
       renderBoard();
       renderStudentJournal();
+      // Render calendar on student home page
+      renderStudentCalendar(sid);
     }
     $('#journal-date').value=formatDate(new Date());
   }
   renderStudentList(); renderRecentLogs();
+}
+
+function renderStudentCalendar(studentId) {
+  const area = $('#student-cal-area');
+  if (!area) return;
+  const lessons = DATA.lessons.filter(l => l.student_id === studentId);
+  const now = new Date();
+  const year = now.getFullYear(), month = now.getMonth();
+  const lessonDates = new Set(lessons.map(l => l.date));
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const dayLabels = ['日','一','二','三','四','五','六'];
+  let html = '<div class="cal">';
+  html += '<div class="cal-head"><button onclick="studCalShift(-1)">◀</button><span class="month" id="stud-cal-month">'+year+'年 '+(month+1)+'月</span><button onclick="studCalShift(1)">▶</button></div>';
+  html += '<div class="cal-grid">';
+  dayLabels.forEach(d => html += '<div class="cal-day-label">'+d+'</div>');
+  for (let i = 0; i < firstDay; i++) html += '<div class="cal-day other"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    let cls = 'cal-day cur';
+    if (d === now.getDate()) cls += ' today';
+    if (lessonDates.has(ds)) cls += ' has-lesson';
+    html += `<div class="${cls}" onclick="studCalClick('${ds}')">${d}</div>`;
+  }
+  html += '</div><div class="cal-detail" id="stud-cal-detail">👆 点击日期查看训练详情</div></div>';
+  area.innerHTML = html;
+  window._studCalYear = year; window._studCalMonth = month; window._studCalSid = studentId;
+}
+
+function studCalShift(delta) {
+  let y = window._studCalYear, m = window._studCalMonth + delta;
+  if (m < 0) { y--; m = 11; } if (m > 11) { y++; m = 0; }
+  window._studCalYear = y; window._studCalMonth = m;
+  renderStudentCalMonth(y, m, window._studCalSid);
+}
+function renderStudentCalMonth(year, month, studentId) {
+  const lessons = DATA.lessons.filter(l => l.student_id === studentId);
+  const now = new Date();
+  const lessonDates = new Set(lessons.map(l => l.date));
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const dayLabels = ['日','一','二','三','四','五','六'];
+  let html = '<div class="cal-head"><button onclick="studCalShift(-1)">◀</button><span class="month">'+year+'年 '+(month+1)+'月</span><button onclick="studCalShift(1)">▶</button></div>';
+  html += '<div class="cal-grid">';
+  dayLabels.forEach(d => html += '<div class="cal-day-label">'+d+'</div>');
+  for (let i = 0; i < firstDay; i++) html += '<div class="cal-day other"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    let cls = 'cal-day cur';
+    if (d === now.getDate() && month === now.getMonth() && year === now.getFullYear()) cls += ' today';
+    if (lessonDates.has(ds)) cls += ' has-lesson';
+    html += `<div class="${cls}" onclick="studCalClick('${ds}')">${d}</div>`;
+  }
+  html += '</div><div class="cal-detail" id="stud-cal-detail">👆 点击日期查看训练详情</div>';
+  $('#student-cal-area').innerHTML = '<div class="cal">'+html+'</div>';
+  window._studCalYear = year; window._studCalMonth = month;
+}
+function studCalClick(date) {
+  const sid = window._studCalSid;
+  const lessons = DATA.lessons.filter(l => l.student_id === sid && l.date === date);
+  const detail = $('#stud-cal-detail');
+  if (!detail) return;
+  if (lessons.length === 0) { detail.textContent = '📅 '+date+' · 无训练'; return; }
+  detail.innerHTML = lessons.map(l => {
+    const dims = l.ratings ? Object.entries(l.ratings).filter(([,v]) => v>0) : [];
+    const dl = { forehand:'正手', backhand:'反手', serve:'发球', volley:'截击', footwork:'步伐', fitness:'体能' };
+    const tags = dims.map(([k,v]) => `<span class="skill-tag">${dl[k]||k} ${v}</span>`).join('');
+    return `📅 ${date} · ${l.content||'训练'} ${tags} ${l.note?'<br>📌 '+l.note:''}`;
+  }).join('<br>');
 }
 
 // ==================== TABS ====================

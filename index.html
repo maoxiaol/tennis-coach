@@ -854,33 +854,6 @@ let authUser = null; // { role: 'coach'|'student', email?: string, student?: obj
 function $(sel) { return document.querySelector(sel); }
 function $$(sel) { return document.querySelectorAll(sel); }
 
-
-// ==================== HELPERS ====================
-function $(sel) { return document.querySelector(sel); }
-function $$(sel) { return document.querySelectorAll(sel); }
-
-
-// ==================== HELPERS ====================
-function $(sel) { return document.querySelector(sel); }
-function $$(sel) { return document.querySelectorAll(sel); }
-
-
-// ==================== HELPERS ====================
-function $(sel) { return document.querySelector(sel); }
-function $$(sel) { return document.querySelectorAll(sel); }
-
-
-// ==================== HELPERS ====================
-function $(sel) { return document.querySelector(sel); }
-function $$(sel) { return document.querySelectorAll(sel); }
-
-
-// ==================== HELPERS ====================
-function $(sel) { return document.querySelector(sel); }
-function $$(sel) { return document.querySelectorAll(sel); }
-
-
-// Login page tab switching
 $$('.login-tab').forEach(tab => {
   tab.addEventListener('click', () => {
     const t = tab.dataset.login;
@@ -2429,4 +2402,4 @@ async function initApp() {
   $('#detail-modal').addEventListener('click',(e)=>{if(e.target===$('#detail-modal'))closeDetailModal();});
 }
 // Start: check auth state
-checkAuth();
+checkAuth();

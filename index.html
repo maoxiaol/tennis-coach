@@ -518,9 +518,19 @@
         <div class="empty-desc">点击上方按钮添加你的第一位学员</div>
       </div>
 
-      <!-- Student: calendar + journal -->
+      <!-- Student: calendar + video + journal -->
       <div class="student-only" id="student-home" style="display:none;">
         <div id="student-cal-area"></div>
+        <div style="margin-top:14px;font-size:14px;font-weight:700;color:var(--text);">📹 我的训练视频</div>
+        <div style="margin-bottom:8px;">
+          <input type="file" id="home-video-file" accept="video/*" style="font-size:12px;margin-bottom:4px;">
+          <input type="text" id="home-video-note" placeholder="视频描述（如：正手慢动作）" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font-body);margin-bottom:4px;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button class="btn btn--primary btn--sm" onclick="studentUploadVideo()">上传视频</button>
+            <span style="font-size:11px;color:var(--muted);" id="home-upload-status"></span>
+          </div>
+        </div>
+        <div id="student-video-list"></div>
         <div id="student-journal" style="margin-top:12px;"></div>
       </div>
     </div>
@@ -649,7 +659,7 @@
     <div id="detail-info" style="margin-bottom:16px;"></div>
     <div style="font-size:13px;font-weight:700;color:var(--text-dim);margin-bottom:8px;">📹 训练视频</div>
     <div id="detail-videos" style="margin-bottom:12px;"></div>
-    <div class="coach-only">
+    <div>
       <input type="file" id="detail-video-file" accept="video/*" style="margin-bottom:8px;font-size:12px;">
       <input type="text" id="detail-video-note" placeholder="视频备注（如：正手慢动作）" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font-body);margin-bottom:8px;">
       <button class="btn btn--primary btn--sm" onclick="uploadVideo()">上传视频</button>
@@ -909,8 +919,8 @@ function applyRoleUI() {
       $('#journal-student-select').value = sid;
       renderBoard();
       renderStudentJournal();
-      // Render calendar on student home page
       renderStudentCalendar(sid);
+      loadStudentVideos(sid);
     }
     $('#journal-date').value=formatDate(new Date());
   }
@@ -972,6 +982,43 @@ function renderStudentCalMonth(year, month, studentId) {
   $('#student-cal-area').innerHTML = '<div class="cal">'+html+'</div>';
   window._studCalYear = year; window._studCalMonth = month;
 }
+async function studentUploadVideo() {
+  const file = $('#home-video-file').files[0];
+  const note = $('#home-video-note').value.trim();
+  const status = $('#home-upload-status');
+  if (!file) { status.textContent = '请选择视频'; return; }
+  status.textContent = '上传中...';
+  try {
+    const sid = authUser.student.id;
+    const fname = 'v_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const res = await fetch(`${SB_URL}/storage/v1/object/videos/${fname}`, {
+      method: 'POST', headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }, body: file
+    });
+    if (!res.ok) { status.textContent = '上传失败'; return; }
+    const url = `${SB_URL}/storage/v1/object/public/videos/${fname}`;
+    await api('POST', 'videos', { student_id: sid, coach_id: authUser.student.coach_id||null, filename:fname, url, note:note||'自拍视频', uploaded_by:'student' });
+    $('#home-video-file').value = ''; $('#home-video-note').value = '';
+    status.textContent = '✓ 上传成功';
+    loadStudentVideos(sid);
+  } catch(e) { status.textContent = '上传失败'; }
+}
+
+async function loadStudentVideos(sid) {
+  const container = $('#student-video-list'); if(!container) return;
+  try {
+    const res = await api('GET', 'videos', null, 'select=*&student_id=eq.'+sid+'&order=created_at.desc');
+    const videos = (res.data && !res.error) ? res.data : [];
+    if (videos.length === 0) { container.innerHTML = '<span style="color:var(--muted);font-size:12px;">暂无视频，上传你的训练视频吧</span>'; return; }
+    container.innerHTML = videos.map(v => `
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+        <video src="${v.url}" controls style="width:80px;height:60px;object-fit:cover;border-radius:4px;background:#000;"></video>
+        <div style="flex:1;font-size:12px;"><div>${v.note||'视频'}</div><div style="color:var(--muted);font-size:10px;">${v.created_at?v.created_at.substring(0,10):''} · ${v.uploaded_by==='student'?'自拍':'教练'}</div></div>
+        <button class="btn btn--sm btn--primary" onclick="analyzeVideo('${v.url}','${v.id}')" style="font-size:10px;">🤖 AI</button>
+        <button class="del-btn" onclick="deleteVideo(${v.id}).then(()=>loadStudentVideos(${sid}))" style="font-size:12px;">✕</button>
+      </div>`).join('');
+  } catch(e) { container.innerHTML = ''; }
+}
+
 function studCalClick(date) {
   const sid = window._studCalSid;
   const lessons = DATA.lessons.filter(l => l.student_id === sid && l.date === date);
@@ -1110,7 +1157,8 @@ async function loadVideos(studentId) {
       if (!isOwner) return '';
       return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
         <video src="${v.url}" controls style="width:80px;height:60px;object-fit:cover;border-radius:4px;background:#000;"></video>
-        <div style="flex:1;font-size:12px;"><div>${v.note||'视频'}</div><div style="color:var(--muted);font-size:10px;">${v.created_at ? v.created_at.substring(0,10) : ''}</div></div>
+        <div style="flex:1;font-size:12px;"><div>${v.note||'视频'}</div><div style="color:var(--muted);font-size:10px;">${v.created_at?v.created_at.substring(0,10):''}</div></div>
+        <button class="btn btn--sm btn--primary" onclick="analyzeVideo('${v.url}','${v.id}')" style="font-size:10px;">🤖 AI分析</button>
         <button class="del-btn" onclick="deleteVideo(${v.id})" style="font-size:12px;">✕</button>
       </div>`;
     }).join('');
@@ -1143,6 +1191,69 @@ async function uploadVideo() {
     status.textContent = '✓ 上传成功';
     loadVideos(_detailStudentId);
   } catch(e) { status.textContent = '上传失败'; }
+}
+
+// AI Analysis
+async function analyzeVideo(videoUrl, videoId) {
+  const apiKey = localStorage.getItem('courtedge_aikey') || '';
+  if (!apiKey) {
+    const key = prompt('需要 OpenAI API Key 来进行AI分析。\n请输入你的 API Key（以 sk- 开头）：');
+    if (!key || !key.startsWith('sk-')) { showToast('需要有效的 API Key'); return; }
+    localStorage.setItem('courtedge_aikey', key);
+  }
+  const ak = localStorage.getItem('courtedge_aikey');
+  showToast('正在分析视频动作...');
+  try {
+    // Extract frames from video
+    const frames = await extractFrames(videoUrl, 4);
+    // Send to OpenAI Vision
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + ak },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: '你是网球教练。分析这个网球挥拍视频的4个关键帧，从以下维度评价（1-10分制）：正手/反手动作正确性、转体、随挥、重心转移、击球点。用中文回复，简洁专业。如果视频不清晰或无法分析，请说明。' },
+            ...frames.map(f => ({ type: 'image_url', image_url: { url: f } }))
+          ]
+        }]
+      })
+    });
+    const data = await res.json();
+    const analysis = data.choices?.[0]?.message?.content || '分析失败，请重试';
+    // Save analysis to video record
+    await api('PATCH', 'videos', { note: analysis.substring(0, 500) }, 'id=eq.'+videoId);
+    alert('🤖 AI 分析结果：\n\n' + analysis);
+    showToast('分析完成！已保存到视频备注');
+    if (_detailStudentId) loadVideos(_detailStudentId);
+  } catch(e) { showToast('分析失败: ' + e.message); }
+}
+
+// Extract frames from video at equal intervals
+function extractFrames(videoUrl, count) {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.crossOrigin = 'anonymous';
+    video.src = videoUrl;
+    video.muted = true;
+    video.addEventListener('loadedmetadata', async () => {
+      const frames = [];
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = 480; canvas.height = 270;
+      const step = video.duration / (count + 1);
+      for (let i = 1; i <= count; i++) {
+        video.currentTime = step * i;
+        await new Promise(r => { video.onseeked = r; });
+        ctx.drawImage(video, 0, 0, 480, 270);
+        frames.push(canvas.toDataURL('image/jpeg', 0.7));
+      }
+      resolve(frames);
+    });
+    video.addEventListener('error', () => reject(new Error('视频加载失败')));
+  });
 }
 
 async function deleteVideo(vid) {

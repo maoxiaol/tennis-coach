@@ -38,7 +38,7 @@ CONFIG = {
         'key': os.environ.get('DEEPSEEK_KEY', ''),
     },
     'qwen': {
-        'url': 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+        'url': 'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions',
         'model': 'qwen-vl-plus',
         'key': os.environ.get('QWEN_KEY', ''),
     },

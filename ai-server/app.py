@@ -40,7 +40,7 @@ CONFIG = {
     },
     'qwen': {
         'url': 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
-        'model': 'qwen-vl-plus',
+        'model': 'qwen-vl-max',
         'key': os.environ.get('QWEN_KEY', ''),
     },
 }
@@ -48,21 +48,16 @@ CONFIG = {
 cfg = CONFIG[PROVIDER]
 API_KEY = cfg['key']
 
-PROMPT_TEMPLATE = """你是专业网球教练。请分析这段训练视频，用中文回复，格式如下：
+PROMPT_TEMPLATE = """你是资深网球教练。你面前是同一个人的一段训练视频的连续关键帧。请仔细观察每帧画面的细节差异——身体角度、拍头位置、重心变化等。
 
-【动作类型】判断这是什么动作（正手/反手/发球/截击/高压/对拉）
+不要给出模板化回答。根据你实际看到的画面内容，给出针对性的分析。如果看不清楚，诚实说明。
 
-【评分】
-只列出视频中出现的动作维度，不出现的不要写。例如正手视频只需要写"正手：X分、步伐：X分"，不要写反手/发球/截击/体能。
-
-【详细分析】
-各维度具体评价
-
-【改进建议】
-2-3条可执行的建议
-
-【总结】
-一句话总结"""
+用中文回复，格式：
+【动作类型】你在画面中实际看到什么动作
+【关键观察】描述你从帧序列中观察到的2-3个具体技术细节（如：第3帧击球点时拍头滞后、转体角度约45度等）
+【评分】只评画面中看到的维度（1-10分）
+【改进建议】2条具体可操作的建议
+【总结】一句话"""
 
 
 @app.route('/analyze', methods=['POST'])
@@ -83,15 +78,17 @@ def analyze():
             return jsonify({'error': f'未设置 {PROVIDER} 的 API Key，请配置环境变量'}), 500
 
         if PROVIDER == 'gemini':
+            import time
             # Gemini 格式不同
-            parts = [{'text': PROMPT_TEMPLATE}]
+            parts = [{'text': PROMPT_TEMPLATE + f"\n[分析ID: {int(time.time()*1000)}]"}]
             for f in frames[:6]:
                 parts.append({'inlineData': {'mimeType': 'image/jpeg', 'data': f.split(',')[1] if ',' in f else f}})
             body = {'contents': [{'parts': parts}]}
             resp = requests.post(f"{cfg['url']}?key={API_KEY}", json=body, timeout=60)
         else:
+            import time
             # OpenAI 兼容格式
-            content = [{'type': 'text', 'text': PROMPT_TEMPLATE}]
+            content = [{'type': 'text', 'text': PROMPT_TEMPLATE + f"\n[分析ID: {int(time.time()*1000)}]"}]
             for f in frames[:6]:
                 content.append({'type': 'image_url', 'image_url': {'url': f}})
             body = {'model': cfg['model'], 'messages': [{'role': 'user', 'content': content}]}

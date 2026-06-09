@@ -1243,17 +1243,20 @@ async function analyzeVideo(videoUrl, videoId) {
     if (!url) return;
     aiEndpoint = url; localStorage.setItem('courtedge_ai_url', url);
   }
-  showToast('正在分析...');
+  showToast('正在提取视频帧...');
   try {
     const frames = await extractFrames(videoUrl, 4);
+    showToast('正在AI分析...（首次可能需30秒唤醒服务）');
     const res = await fetch(aiEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ frames, prompt: '你是网球教练。分析这个挥拍视频的4个关键帧，从以下维度评价（1-10分）：动作正确性、转体、随挥、重心转移、击球点。用中文回复，简洁专业。' })
+      body: JSON.stringify({ frames, prompt: '你是网球教练。分析这个挥拍视频的4个关键帧，从以下维度评价（1-10分）：动作正确性、转体、随挥、重心转移、击球点。用中文回复，简洁专业。' }),
+      signal: AbortSignal.timeout(120000)
     });
+    if (!res.ok) { showToast('AI服务错误: ' + res.status); return; }
     const data = await res.json();
-    const analysis = data.analysis || data.result || data.message || '分析完成，请在AI服务查看结果';
-    // Save to video note
+    const analysis = data.analysis || data.error || '分析完成，请在AI服务查看结果';
+    if (data.error) { showToast('AI返回错误: ' + data.error); return; }
     await api('PATCH', 'videos', { note: analysis.substring(0, 1000) }, 'id=eq.'+videoId);
     alert('🤖 AI 分析结果：\n\n' + analysis);
     showToast('分析完成');

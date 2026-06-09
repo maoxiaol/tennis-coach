@@ -706,7 +706,7 @@
       </div>
       <div class="card" style="margin-bottom:10px;">
         <div class="field-label" style="margin-bottom:8px;">已上传视频</div>
-        <div id="ai-video-list" style="max-height:220px;overflow-y:auto;">
+        <div id="ai-video-list" style="max-height:150px;overflow-y:auto;">
           <div style="text-align:center;padding:20px;color:var(--muted);font-size:13px;">点击上方按钮上传视频</div>
         </div>
       </div>
@@ -849,6 +849,11 @@ async function api(method, table, body, query) {
 
 // ==================== AUTH STATE ====================
 let authUser = null; // { role: 'coach'|'student', email?: string, student?: object }
+
+// ==================== HELPERS ====================
+function $(sel) { return document.querySelector(sel); }
+function $$(sel) { return document.querySelectorAll(sel); }
+
 
 // ==================== HELPERS ====================
 function $(sel) { return document.querySelector(sel); }
@@ -2355,7 +2360,7 @@ function importAiRatingsFromPage() {
 function uploadFromAiPage(event) {
   var file = event.target.files[0];
   if (!file) { showToast('请选择视频文件'); return; }
-  var coachId = authUser && authUser.coach ? authUser.coach.id : null;
+  var coachId = (authUser && authUser.coach) ? authUser.coach.id : (authUser && authUser.student ? authUser.student.coach_id : null);
   if (!coachId) { showToast('请先登录'); return; }
   showLoading(true);
   try {
@@ -2408,5 +2413,4 @@ async function initApp() {
 checkAuth();
 </script>
 </body>
-</html>
-
+</html>

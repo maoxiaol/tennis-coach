@@ -1897,6 +1897,7 @@ function openStudentDetail(studentId) {
     '<div style="text-align:center;"><div style="font-size:28px;font-weight:600;color:' + (remaining(s)<=2?'var(--danger)':'var(--green-d)') + ';">' + remaining(s) + '</div>' +
     '<div style="font-size:10px;color:var(--muted);">剩余 / ' + (s.total_lessons||s.lessons||0) + '节</div></div></div>';
   switchDetailTab('lessons');
+  if (typeof loadVideos !== 'undefined') setTimeout(function() { loadVideos(studentId); }, 100);
   document.getElementById('detail-modal').classList.add('show');
 }
 
@@ -1911,7 +1912,7 @@ function switchDetailTab(tab) {
   if (panel) panel.classList.add('active');
   if (tab === 'lessons') renderDetailLessons();
   else if (tab === 'trend') renderDetailTrend();
-  else if (tab === 'videos') renderDetailVideos();
+  else if (tab === 'videos') loadVideos(_detailStudentId);
   else if (tab === 'notes') renderDetailNotes();
 }
 

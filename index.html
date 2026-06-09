@@ -1104,9 +1104,12 @@ async function loadStudentVideos(sid) {
     container.innerHTML = videos.map(v => `
       <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
         <video src="${v.url}" controls style="width:80px;height:60px;object-fit:cover;border-radius:4px;background:#000;"></video>
-        <div style="flex:1;font-size:12px;"><div>${v.note||'视频'}</div><div style="color:var(--muted);font-size:10px;">${v.created_at?v.created_at.substring(0,10):''} · ${v.uploaded_by==='student'?'自拍':'教练'}</div></div>
-        <button class="btn btn--sm btn--primary" onclick="analyzeVideo('${v.url}','${v.id}')" style="font-size:10px;">🤖 AI</button>
-        <button class="del-btn" onclick="deleteVideo(${v.id}).then(()=>loadStudentVideos(${sid}))" style="font-size:12px;">✕</button>
+        <div style="flex:1;font-size:12px;"><div>${v.note||'视频'}</div><div style="color:var(--muted);font-size:10px;">${v.created_at?v.created_at.substring(0,10):''}${v.ai_ratings?' | AI评分':''} · ${v.uploaded_by==='student'?'自拍':'教练'}</div></div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <button class="btn btn--sm btn--primary" onclick="var p=document.getElementById('ai-analysis-panel');if(p){p._lastVideoUrl='${v.url}';p._lastVideoId='${v.id}';}analyzeVideo('${v.url}','${v.id}')" style="font-size:10px;">🤖 AI</button>
+          ${v.ai_ratings?'<button class="btn btn--sm btn--outline" onclick="importAiRatings(\'${encodeURIComponent(v.ai_ratings)}\')" style="font-size:9px;">导入评分</button>':''}
+          <button class="del-btn" onclick="deleteVideo(${v.id}).then(()=>loadStudentVideos(${sid}))" style="font-size:12px;">✕</button>
+        </div>
       </div>`).join('');
   } catch(e) { container.innerHTML = ''; }
 }
@@ -1249,9 +1252,12 @@ async function loadVideos(studentId) {
       if (!isOwner) return '';
       return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
         <video src="${v.url}" controls style="width:80px;height:60px;object-fit:cover;border-radius:4px;background:#000;"></video>
-        <div style="flex:1;font-size:12px;"><div>${v.note||'视频'}</div><div style="color:var(--muted);font-size:10px;">${v.created_at?v.created_at.substring(0,10):''}</div></div>
-        <button class="btn btn--sm btn--primary" onclick="analyzeVideo('${v.url}','${v.id}')" style="font-size:10px;">🤖 AI分析</button>
-        <button class="del-btn" onclick="deleteVideo(${v.id})" style="font-size:12px;">✕</button>
+        <div style="flex:1;font-size:12px;"><div>${v.note||'视频'}</div><div style="color:var(--muted);font-size:10px;">${v.created_at?v.created_at.substring(0,10):''}${v.ai_ratings?' | AI评分':''}</div></div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <button class="btn btn--sm btn--primary" onclick="var p=document.getElementById('ai-analysis-panel');if(p){p._lastVideoUrl='${v.url}';p._lastVideoId='${v.id}';}analyzeVideo('${v.url}','${v.id}')" style="font-size:10px;">🤖 AI分析</button>
+          ${v.ai_ratings?'<button class="btn btn--sm btn--outline" onclick="importAiRatings(\'${encodeURIComponent(v.ai_ratings)}\')" style="font-size:9px;">导入评分</button>':''}
+          <button class="del-btn" onclick="deleteVideo(${v.id})" style="font-size:12px;">✕</button>
+        </div>
       </div>`;
     }).join('');
   } catch(e) { container.innerHTML = '<span style="color:var(--danger);font-size:12px;">加载失败</span>'; }
@@ -1311,40 +1317,128 @@ async function uploadVideo() {
 let aiEndpoint = localStorage.getItem('courtedge_ai_url') || 'https://tennis-coach-ai-s646.onrender.com/analyze';
 
 function setAIEndpoint() {
-  const url = prompt('请输入你的 AI 分析服务地址：\n（例如：https://your-server.com/analyze）', aiEndpoint);
+  const url = prompt('请输入你的 AI 分析服务地址：\n（你部署的 ai-server 地址 + /analyze）\n推荐用 Gemini (免费) / Qwen / OpenAI', aiEndpoint);
   if (url) { aiEndpoint = url; localStorage.setItem('courtedge_ai_url', url); showToast('AI 地址已保存'); }
 }
 
 async function analyzeVideo(videoUrl, videoId) {
   if (!aiEndpoint) {
-    const url = prompt('请先设置 AI 分析服务地址：\n（你部署的 AI 分析端点 URL）\n\n需要接受 POST 请求，body 格式：{"frames":["base64..."]}\n返回格式：{"analysis":"分析结果"}');
+    const url = prompt(
+      '请先设置 AI 分析服务地址：\n（你部署的 AI 分析端点 URL）\n\n' +
+      'POST body: {"frames":["base64..."], "prompt":"..."}\n' +
+      '返回: {"ratings":{...}, "summary":"...", "suggestions":[...], "details":"..."}'
+    );
     if (!url) return;
     aiEndpoint = url; localStorage.setItem('courtedge_ai_url', url);
   }
-  showToast('正在提取视频帧...');
+
+  const panel = showAnalysisPanel(true);
+
   try {
-    const frames = await extractFrames(videoUrl, 4);
-    showToast('正在AI分析...（首次可能需30秒唤醒服务）');
+    // Step 1: Extract frames
+    panel.update('提取视频帧中...', 0);
+    let frames, timestamps, duration;
+    try {
+      const result = await extractFrames(videoUrl, 8, function(cur, total) {
+        panel.update('提取帧 ' + cur + '/' + total, Math.round(cur / total * 25));
+      });
+      frames = result.frames;
+      timestamps = result.timestamps;
+      duration = result.duration;
+    } catch(e) {
+      panel.error('帧提取失败: ' + e.message, true);
+      return;
+    }
+
+    // Step 2: AI analysis
+    panel.update('AI 分析中...（首次需 30s 左右唤醒服务）', 30);
+
+    const controller = new AbortController();
+    panel._abort = controller;
+
     const res = await fetch(aiEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ frames, prompt: '你是网球教练。分析这个挥拍视频的4个关键帧，从以下维度评价（1-10分）：动作正确性、转体、随挥、重心转移、击球点。用中文回复，简洁专业。' }),
-      signal: AbortSignal.timeout(120000)
+      body: JSON.stringify({
+        frames: frames,
+        timestamps: timestamps,
+        duration: duration,
+        prompt: '你是专业网球教练。分析这个网球训练视频的关键帧（共' + frames.length + '帧）。' +
+          '按以下JSON格式回复（不要markdown代码块，只返回纯JSON）：' +
+          '{"action_type":"动作类型","ratings":{"forehand":0-10,"backhand":0-10,"serve":0-10,"volley":0-10,"footwork":0-10,"fitness":0-10},"summary":"一句话评价","details":"各维度详细分析","suggestions":["建议1","建议2"]}' +
+          '要求：1.先判断动作类型 2.只对实际出现的动作维度打分，未出现的填0 3.建议要具体'
+      }),
+      signal: controller.signal
     });
-    if (!res.ok) { showToast('AI服务错误: ' + res.status); return; }
+
+    panel.update('处理分析结果...', 65);
+
+    if (!res.ok) {
+      panel.error('AI服务错误 (' + res.status + ')', true);
+      return;
+    }
+
     const data = await res.json();
-    const analysis = data.analysis || data.error || '分析完成，请在AI服务查看结果';
-    if (data.error) { showToast('AI返回错误: ' + data.error); return; }
-    await api('PATCH', 'videos', { note: analysis.substring(0, 1000) }, 'id=eq.'+videoId);
-    alert('🤖 AI 分析结果：\n\n' + analysis);
-    showToast('分析完成');
+
+    // Step 3: Parse result
+    panel.update('解析结果...', 80);
+
+    let result = { summary: '', ratings: null, suggestions: [], details: '' };
+
+    // Try to parse structured JSON from AI response
+    if (data.ratings || data.summary || data.suggestions) {
+      result = data;
+    } else if (data.analysis) {
+      // Try to extract JSON from text response
+      try {
+        const jsonMatch = data.analysis.match(/{[\s\S]*?}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          result.ratings = parsed.ratings || null;
+          result.summary = parsed.summary || data.analysis.substring(0, 200);
+          result.suggestions = parsed.suggestions || [];
+          result.details = parsed.details || data.analysis;
+        } else {
+          result.summary = data.analysis;
+          result.details = data.analysis;
+        }
+      } catch(e) {
+        result.summary = data.analysis;
+        result.details = data.analysis;
+      }
+    } else {
+      result.summary = data.error || '分析完成';
+      result.details = JSON.stringify(data);
+    }
+
+    // Step 4: Save result
+    panel.update('保存结果...', 90);
+
+    const saveNote = result.summary || (result.ratings ? JSON.stringify(result.ratings) : '');
+    const aiRatingsStr = result.ratings ? JSON.stringify(result.ratings) : '';
+    await api('PATCH', 'videos', {
+      note: saveNote.substring(0, 1000),
+      ai_ratings: aiRatingsStr
+    }, 'id=eq.' + videoId);
+
+    // Step 5: Show result
+    panel.done(result);
+
+    // Refresh video list
     if (_detailStudentId) loadVideos(_detailStudentId);
     else if (authUser.student) loadStudentVideos(authUser.student.id);
-  } catch(e) { showToast('分析失败: ' + e.message); }
+  } catch(e) {
+    if (e.name === 'AbortError') {
+      panel.error('分析已取消', false);
+    } else {
+      panel.error('分析失败: ' + e.message, true);
+    }
+  }
 }
 
 // Extract frames from video at equal intervals
-function extractFrames(videoUrl, count) {
+function extractFrames(videoUrl, count, onProgress) {
+  if (!count) count = 8;
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
     if (!videoUrl.startsWith('data:')) video.crossOrigin = 'anonymous';
@@ -1356,27 +1450,195 @@ function extractFrames(videoUrl, count) {
       clearTimeout(timer);
       try {
         const frames = [];
+        const timestamps = [];
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
-        canvas.width = 480; canvas.height = 270;
+        canvas.width = 320; canvas.height = 180;
         const step = video.duration / (count + 1);
         for (let i = 1; i <= count; i++) {
-          await new Promise(r => {
-            video.onseeked = r;
-            video.currentTime = step * i;
-          });
-          ctx.drawImage(video, 0, 0, 480, 270);
-          frames.push(canvas.toDataURL('image/jpeg', 0.7));
+          const t = step * i;
+          await new Promise(r => { video.onseeked = r; video.currentTime = t; });
+          ctx.drawImage(video, 0, 0, 320, 180);
+          frames.push(canvas.toDataURL('image/jpeg', 0.5));
+          timestamps.push(Math.round(t));
+          if (onProgress) onProgress(i, count);
         }
-        resolve(frames);
+        resolve({ frames: frames, timestamps: timestamps, duration: video.duration });
       } catch(e) { reject(e); }
     });
-    video.addEventListener('error', () => { clearTimeout(timer); reject(new Error('视频加载失败，请检查网络')); });
+    video.addEventListener('error', () => { clearTimeout(timer); reject(new Error('视频加载失败')); });
     video.load();
   });
 }
 
 // Upload with progress bar
+
+
+// ==================== AI ANALYSIS PANEL UI (新增) ====================
+function showAnalysisPanel(show) {
+  var existing = document.getElementById('ai-analysis-panel');
+  if (!show) {
+    if (existing) existing.style.display = 'none';
+    return null;
+  }
+
+  if (!existing) {
+    existing = document.createElement('div');
+    existing.id = 'ai-analysis-panel';
+    existing.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:150;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;padding:20px;';
+    existing.innerHTML =
+      '<div style="background:#fff;border-radius:20px;padding:24px;width:100%;max-width:420px;box-shadow:0 12px 40px rgba(0,0,0,0.15);">' +
+        '<div style="font-size:16px;font-weight:700;margin-bottom:16px;color:var(--text);">AI 动作分析</div>' +
+        '<div id="ai-progress-bar" style="height:6px;background:var(--elevated);border-radius:3px;overflow:hidden;margin-bottom:12px;"><div id="ai-progress-fill" style="height:100%;width:0%;background:linear-gradient(90deg,var(--green),var(--sky));border-radius:3px;transition:width 0.4s ease;"></div></div>' +
+        '<div id="ai-status" style="font-size:13px;color:var(--text-dim);margin-bottom:12px;">准备中...</div>' +
+        '<div id="ai-result-box" style="display:none;"></div>' +
+        '<div id="ai-error-box" style="display:none;text-align:center;"></div>' +
+        '<div id="ai-actions" style="display:flex;gap:8px;margin-top:12px;"></div>' +
+      '</div>';
+    document.body.appendChild(existing);
+
+    existing.addEventListener('click', function(e) {
+      if (e.target === existing && existing._allowClose) {
+        existing.style.display = 'none';
+      }
+    });
+  }
+
+  existing.style.display = 'flex';
+  existing._allowClose = false;
+
+  // Reset state
+  document.getElementById('ai-progress-fill').style.width = '0%';
+  document.getElementById('ai-status').textContent = '准备中...';
+  document.getElementById('ai-status').style.color = 'var(--text-dim)';
+  document.getElementById('ai-result-box').style.display = 'none';
+  document.getElementById('ai-error-box').style.display = 'none';
+  document.getElementById('ai-actions').innerHTML = '';
+
+  return {
+    update: function(msg, pct) {
+      var progress = document.getElementById('ai-progress-fill');
+      var status = document.getElementById('ai-status');
+      if (progress) progress.style.width = (pct || 0) + '%';
+      if (status) status.textContent = msg || '';
+    },
+    done: function(result) {
+      var progress = document.getElementById('ai-progress-fill');
+      var status = document.getElementById('ai-status');
+      var resultBox = document.getElementById('ai-result-box');
+      var actions = document.getElementById('ai-actions');
+      existing._allowClose = true;
+
+      if (progress) progress.style.width = '100%';
+      if (status) { status.textContent = '分析完成'; status.style.color = 'var(--green)'; }
+
+      // Build result display
+      if (result && result.ratings) {
+        var dimLabels = {forehand:'正手', backhand:'反手', serve:'发球', volley:'截击', footwork:'步伐', fitness:'体能'};
+        var dimColors = {forehand:'#2ecc71', backhand:'#74b9ff', serve:'#e8895b', volley:'#f9a825', footwork:'#a29bfe', fitness:'#fd79a8'};
+        var html = '';
+
+        // Rating bars
+        html += '<div style="margin-bottom:14px;">';
+        Object.keys(result.ratings).forEach(function(d) {
+          var val = result.ratings[d];
+          if (val > 0) {
+            var pct2 = (val / 10 * 100);
+            html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">' +
+              '<span style="font-size:11px;font-weight:600;width:36px;color:var(--text-dim);text-align:right;">' + (dimLabels[d]||d) + '</span>' +
+              '<div style="flex:1;height:16px;background:var(--elevated);border-radius:8px;overflow:hidden;">' +
+              '<div style="height:100%;width:' + pct2 + '%;background:' + (dimColors[d]||'var(--green)') + ';border-radius:8px;transition:width 0.6s ease;"></div></div>' +
+              '<span style="font-size:12px;font-weight:700;width:24px;">' + val + '</span></div>';
+          }
+        });
+        html += '</div>';
+        resultBox.innerHTML = html;
+
+        // Import button
+        html += '<div style="margin-top:8px;display:flex;gap:8px;">' +
+          '<button class="btn btn--primary btn--sm" style="flex:1;" onclick="importAiRatings(\'' + encodeURIComponent(JSON.stringify(result.ratings)) + '\')">导入评分到记课</button></div>';
+      }
+
+      // Summary
+      if (result && result.summary) {
+        resultBox.innerHTML += '<div style="font-size:13px;color:var(--text);margin-top:8px;padding:10px;background:var(--elevated);border-radius:10px;line-height:1.7;">' + result.summary + '</div>';
+      }
+
+      // Details
+      if (result && result.details && result.details !== result.summary) {
+        resultBox.innerHTML += '<div style="font-size:12px;color:var(--text-dim);margin-top:8px;line-height:1.6;max-height:150px;overflow-y:auto;padding:8px;background:#fafafa;border-radius:8px;">' + result.details + '</div>';
+      }
+
+      // Suggestions
+      if (result && result.suggestions && result.suggestions.length > 0) {
+        var sHtml = '<div style="margin-top:10px;"><div style="font-size:12px;font-weight:700;color:var(--text-dim);margin-bottom:4px;">改进建议</div>';
+        result.suggestions.forEach(function(s, i) {
+          sHtml += '<div style="font-size:12px;color:var(--clay);padding:3px 0;">' + (i+1) + '. ' + s + '</div>';
+        });
+        sHtml += '</div>';
+        resultBox.innerHTML += sHtml;
+      }
+
+      resultBox.style.display = 'block';
+
+      actions.innerHTML = '<button class="btn btn--outline btn--sm btn--block" onclick="this.closest(\'[id=ai-analysis-panel]\') ? document.getElementById(\'ai-analysis-panel\').style.display=\'none\' : \'\'">关闭</button>';
+      if (existing._lastVideoUrl) {
+        actions.innerHTML += '<button class="btn btn--primary btn--sm" onclick="analyzeVideo(existing._lastVideoUrl, existing._lastVideoId)">重新分析</button>';
+      }
+    },
+    error: function(msg, showRetry) {
+      var progress = document.getElementById('ai-progress-fill');
+      var status = document.getElementById('ai-status');
+      var errorBox = document.getElementById('ai-error-box');
+      var actions = document.getElementById('ai-actions');
+      existing._allowClose = true;
+
+      if (progress) progress.style.width = '0%';
+      if (status) { status.textContent = '分析失败'; status.style.color = 'var(--danger)'; }
+      if (errorBox) {
+        errorBox.innerHTML = '<div style="font-size:13px;color:var(--danger);margin-bottom:12px;padding:12px;background:var(--danger-bg);border-radius:10px;">' + msg + '</div>';
+        errorBox.style.display = 'block';
+      }
+      if (showRetry && existing._lastVideoUrl) {
+        actions.innerHTML = '<button class="btn btn--outline btn--sm btn--block" onclick="this.closest(\'[id=ai-analysis-panel]\') ? document.getElementById(\'ai-analysis-panel\').style.display=\'none\' : \'\'">关闭</button>' +
+          '<button class="btn btn--primary btn--sm" onclick="analyzeVideo(existing._lastVideoUrl, existing._lastVideoId)">重试</button>';
+      } else {
+        actions.innerHTML = '<button class="btn btn--outline btn--sm btn--block" onclick="this.closest(\'[id=ai-analysis-panel]\') ? document.getElementById(\'ai-analysis-panel\').style.display=\'none\' : \'\'">关闭</button>';
+      }
+    }
+  };
+}
+
+function importAiRatings(ratingsStr) {
+  try {
+    var ratings = JSON.parse(decodeURIComponent(ratingsStr));
+    // Map AI ratings to lesson rating sliders
+    var dimMap = {forehand:'forehand', backhand:'backhand', serve:'serve', volley:'volley', footwork:'footwork', fitness:'fitness'};
+    Object.keys(ratings).forEach(function(k) {
+      var dim = dimMap[k] || k;
+      var slider = document.querySelector('.rating[data-dim="' + dim + '"]');
+      if (slider && ratings[k] > 0) {
+        slider.value = Math.round(ratings[k]);
+        var valEl = slider.closest('.rating-cell').querySelector('.rating-cell__val');
+        if (valEl) valEl.textContent = Math.round(ratings[k]);
+      }
+    });
+    // Switch to lesson tab
+    document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelectorAll('.page').forEach(function(p) { p.classList.remove('active'); });
+    var lessonTab = document.querySelector('.tab[data-tab="lesson"]');
+    var lessonPage = document.getElementById('page-lesson');
+    if (lessonTab) lessonTab.classList.add('active');
+    if (lessonPage) lessonPage.classList.add('active');
+
+    // Close panel
+    var panel = document.getElementById('ai-analysis-panel');
+    if (panel) panel.style.display = 'none';
+    showToast('AI 评分已导入！可手动调整后保存课程');
+  } catch(e) {
+    showToast('评分导入失败');
+  }
+}
 function uploadWithProgress(url, file, statusEl) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();

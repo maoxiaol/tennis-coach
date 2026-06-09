@@ -11,7 +11,7 @@
 """
 
 from flask import Flask, request, jsonify
-from flask_cors import CORS
+from flask_cors import CORS\nimport json
 import requests
 import os
 
@@ -47,41 +47,33 @@ CONFIG = {
 cfg = CONFIG[PROVIDER]
 API_KEY = cfg['key']
 
-PROMPT_TEMPLATE = """你是专业网球教练。请分两步分析这个网球训练视频的关键帧：
+PROMPT_TEMPLATE = """你是专业网球教练。分析这个网球训练视频的关键帧。
 
-第一步：先判断这是什么动作类型
-- 正手击球 / 反手击球 / 发球 / 截击 / 高压球 / 切削球 / 对拉 / 其他
-- 说明判断依据
+按以下JSON格式回复（不要markdown代码块，只返回纯JSON，不要任何额外文字）：
 
-第二步：根据动作类型，针对性分析技术要点（1-10分）：
+{
+  "action_type": "正手击球/反手击球/发球/截击/高压球/其他",
+  "ratings": {
+    "forehand": 0,
+    "backhand": 0,
+    "serve": 0,
+    "volley": 0,
+    "footwork": 0,
+    "fitness": 0
+  },
+  "summary": "整体评价",
+  "details": "各维度详细技术分析",
+  "suggestions": ["具体改进建议1", "具体改进建议2"]
+}
 
-发球动作侧重：
-1. 抛球位置与高度
-2.  trophy pose（奖杯姿势）
-3. 腿部蹬地发力
-4. 拍头速度与内旋
-5. 击球点高度
-6. 落地与平衡
-
-正手/反手击球侧重：
-1. 准备姿势与转体
-2. 重心转移
-3. 挥拍轨迹
-4. 击球点位置
-5. 随挥动作
-6. 回位步伐
-
-截击/高压侧重：
-1. 准备与反应速度
-2. 拍面角度
-3. 击球点
-4. 脚下移动
-
-请用中文回复，格式如下：
-【动作识别】XXX
-【分析评分】各维度评分及说明
-【总体评价】一句话总结
-【改进建议】2-3条具体建议"""
+要求：
+1. 先判断动作类型
+2. 只对视频中实际出现的动作维度评分(1-10)，未出现的维度填0
+3. 评分要有分析依据，写在details里
+4. 建议要具体可执行
+5. 如果判断是发球，重点关注serve维度
+6. 如果判断是正手/反手，重点关注对应维度
+7. 必须返回纯JSON，不要任何其他文字"""
 
 
 @app.route('/analyze', methods=['POST'])
@@ -129,7 +121,37 @@ def analyze():
         else:
             analysis = result['choices'][0]['message']['content']
 
-        return jsonify({'analysis': analysis})
+        # Try to parse JSON from AI response
+        try:
+            # Strip markdown code blocks
+            cleaned = analysis.strip()
+            if cleaned.startswith('\`\`\`'):
+                cleaned = cleaned.split('\n', 1)[1] if '\n' in cleaned else cleaned
+                if '\`\`\`' in cleaned:
+                    cleaned = cleaned.rsplit('\`\`\`', 1)[0]
+            cleaned = cleaned.strip()
+
+            parsed = json.loads(cleaned)
+            # Validate structure
+            if isinstance(parsed, dict) and 'ratings' in parsed:
+                return jsonify({
+                    'ratings': parsed.get('ratings', {}),
+                    'summary': parsed.get('summary', ''),
+                    'details': parsed.get('details', analysis),
+                    'suggestions': parsed.get('suggestions', []),
+                    'action_type': parsed.get('action_type', '')
+                })
+        except (json.JSONDecodeError, Exception):
+            pass
+
+        # Fallback: return raw text
+        return jsonify({
+            'ratings': None,
+            'summary': analysis[:200],
+            'details': analysis,
+            'suggestions': [],
+            'action_type': ''
+        })
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500

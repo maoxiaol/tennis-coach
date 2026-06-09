@@ -558,6 +558,10 @@
           <label class="field-label">课后作业 / 备注</label>
           <textarea id="lesson-note" placeholder="回去每天练50个发球抛球 …"></textarea>
         </div>
+        <div class="field coach-only">
+          <label class="field-label">训练视频</label>
+          <input type="file" id="lesson-video" accept="video/*" style="font-size:12px;">
+        </div>
         <button class="btn btn--primary btn--block" onclick="recordLesson()" style="margin-top:2px;">✓ 记录训练 · 自动消课 -1</button>
       </div>
 
@@ -635,6 +639,23 @@
       <button class="btn btn--outline btn--block" onclick="closeStudentModal()">取消</button>
       <button class="btn btn--primary btn--block" onclick="saveStudent()">保存</button>
     </div>
+  </div>
+</div>
+
+<!-- Student Detail Modal -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal">
+    <div class="modal__title" id="detail-name">学员详情</div>
+    <div id="detail-info" style="margin-bottom:16px;"></div>
+    <div style="font-size:13px;font-weight:700;color:var(--text-dim);margin-bottom:8px;">📹 训练视频</div>
+    <div id="detail-videos" style="margin-bottom:12px;"></div>
+    <div class="coach-only">
+      <input type="file" id="detail-video-file" accept="video/*" style="margin-bottom:8px;font-size:12px;">
+      <input type="text" id="detail-video-note" placeholder="视频备注（如：正手慢动作）" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font-body);margin-bottom:8px;">
+      <button class="btn btn--primary btn--sm" onclick="uploadVideo()">上传视频</button>
+      <span style="font-size:11px;color:var(--muted);margin-left:8px;" id="upload-status"></span>
+    </div>
+    <div style="margin-top:16px;"><button class="btn btn--outline btn--block" onclick="closeDetailModal()">关闭</button></div>
   </div>
 </div>
 
@@ -990,7 +1011,7 @@ function renderStudentList() {
   empty.style.display='none';
   list.innerHTML=students.map(s=>{
     const rem=remaining(s); let cls='ok'; if(rem<=0)cls='danger'; else if(rem<=2)cls='warn';
-    return `<div class="card" style="cursor:${isCoach?'pointer':'default'};" onclick="${isCoach?`editStudent(${s.id})`:''}">
+    return `<div class="card" style="cursor:pointer;" onclick="${isCoach?`editStudent(${s.id})`:`showDetailModal(${s.id})`}">
       <div class="student-row">
         <div class="avatar" style="background:${avatarColor(s.name)};">${s.name[0]}</div>
         <div class="student-info">
@@ -1053,6 +1074,93 @@ async function saveStudent() {
   closeStudentModal();renderStudentList();renderRecentLogs();showToast('学员已保存 ✓');
 }
 function editStudent(id){showStudentModal(id);}
+
+// ==================== STUDENT DETAIL & VIDEO ====================
+let _detailStudentId = null;
+
+function showDetailModal(id) {
+  const s = DATA.students.find(st => st.id === id);
+  if (!s) return;
+  _detailStudentId = id;
+  $('#detail-name').textContent = s.name + ' · 训练视频';
+  const rem = remaining(s);
+  $('#detail-info').innerHTML = `
+    <div class="student-row" style="margin-bottom:12px;">
+      <div class="avatar" style="background:${avatarColor(s.name)};width:40px;height:40px;font-size:16px;">${s.name[0]}</div>
+      <div class="student-info">
+        <div class="student-name">${s.name} <span style="font-size:11px;color:var(--muted);">${s.level} · ${s.type}</span></div>
+        <div class="student-meta">剩余 <b style="color:${rem<=2?'var(--danger)':'var(--green-d)'};">${rem}</b> 课时 · 共 ${DATA.lessons.filter(l=>l.student_id===id).length} 节课</div>
+      </div>
+    </div>`;
+  loadVideos(id);
+  $('#detail-modal').classList.add('show');
+}
+function closeDetailModal() { $('#detail-modal').classList.remove('show'); _detailStudentId = null; }
+
+async function loadVideos(studentId) {
+  const container = $('#detail-videos');
+  container.innerHTML = '<span style="color:var(--muted);font-size:12px;">加载中...</span>';
+  try {
+    const res = await api('GET', 'videos', null, 'select=*&student_id=eq.'+studentId+'&order=created_at.desc');
+    const videos = (res.data && !res.error) ? res.data : [];
+    if (videos.length === 0) { container.innerHTML = '<span style="color:var(--muted);font-size:12px;">暂无视频</span>'; return; }
+    container.innerHTML = videos.map(v => {
+      const isOwner = (authUser.role === 'coach' && authUser.coach && authUser.coach.id === v.coach_id)
+                   || (authUser.role === 'student' && authUser.student && authUser.student.id === v.student_id);
+      if (!isOwner) return '';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);">
+        <video src="${v.url}" controls style="width:80px;height:60px;object-fit:cover;border-radius:4px;background:#000;"></video>
+        <div style="flex:1;font-size:12px;"><div>${v.note||'视频'}</div><div style="color:var(--muted);font-size:10px;">${v.created_at ? v.created_at.substring(0,10) : ''}</div></div>
+        <button class="del-btn" onclick="deleteVideo(${v.id})" style="font-size:12px;">✕</button>
+      </div>`;
+    }).join('');
+  } catch(e) { container.innerHTML = '<span style="color:var(--danger);font-size:12px;">加载失败</span>'; }
+}
+
+async function uploadVideo() {
+  const fileInput = $('#detail-video-file');
+  const file = fileInput.files[0];
+  const note = $('#detail-video-note').value.trim();
+  const status = $('#upload-status');
+  if (!file) { status.textContent = '请选择视频文件'; return; }
+  status.textContent = '上传中...';
+  try {
+    const fname = 'v_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const res = await fetch(`${SB_URL}/storage/v1/object/videos/${fname}`, {
+      method: 'POST',
+      headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY },
+      body: file
+    });
+    if (!res.ok) { status.textContent = '上传失败'; return; }
+    const url = `${SB_URL}/storage/v1/object/public/videos/${fname}`;
+    await api('POST', 'videos', {
+      student_id: _detailStudentId,
+      coach_id: authUser.coach ? authUser.coach.id : null,
+      filename: fname, url, note,
+      uploaded_by: authUser.role
+    });
+    fileInput.value = ''; $('#detail-video-note').value = '';
+    status.textContent = '✓ 上传成功';
+    loadVideos(_detailStudentId);
+  } catch(e) { status.textContent = '上传失败'; }
+}
+
+async function deleteVideo(vid) {
+  if (!confirm('删除这个视频？')) return;
+  try {
+    const res = await api('GET', 'videos', null, 'select=id,filename&id=eq.'+vid);
+    const v = (res.data && res.data.length > 0) ? res.data[0] : null;
+    if (v) {
+      await fetch(`${SB_URL}/storage/v1/object/videos/${v.filename}`, {
+        method: 'DELETE',
+        headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }
+      });
+    }
+    await api('DELETE', 'videos', null, 'id=eq.'+vid);
+    loadVideos(_detailStudentId);
+    showToast('视频已删除');
+  } catch(e) { showToast('删除失败'); }
+}
 async function deleteStudent(id,name){
   if(!confirm(`确定删除「${name}」？\n相关上课记录也会删除。`))return;
   showLoading(true);
@@ -1070,9 +1178,21 @@ async function recordLesson() {
   const ratings={};$$('.rating').forEach(r=>{ratings[r.dataset.dim]=parseInt(r.value);});
   showLoading(true);
   await api('POST', 'lessons', {student_id:studentId,date:$('#lesson-date').value||formatDate(new Date()),content,note,ratings,coach_id: authUser.coach ? authUser.coach.id : null});
+  // Upload video if selected
+  const videoFile = $('#lesson-video').files[0];
+  if (videoFile) {
+    try {
+      const fname = 'v_' + Date.now() + '_' + videoFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      await fetch(`${SB_URL}/storage/v1/object/videos/${fname}`, {
+        method: 'POST', headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }, body: videoFile
+      });
+      const url = `${SB_URL}/storage/v1/object/public/videos/${fname}`;
+      await api('POST', 'videos', {student_id:studentId, coach_id: authUser.coach ? authUser.coach.id : null, filename:fname, url, note:'课程视频', uploaded_by:'coach'});
+    } catch(e) { console.error('视频上传失败:', e); }
+  }
   await api('PATCH', 'students', {used_lessons:(student.used_lessons||0)+1}, 'id=eq.'+studentId);
   await syncFromCloud();showLoading(false);
-  $('#lesson-content').value='';$('#lesson-note').value='';
+  $('#lesson-content').value='';$('#lesson-note').value='';$('#lesson-video').value='';
   $$('.rating').forEach(r=>{r.value=5;const d=r.parentElement.querySelector('.rating-cell__val');if(d)d.textContent='5';});
   renderStudentList();renderRecentLogs();
   const rem=remaining(student);showToast(`记课成功 · ${student.name} 剩余 ${rem} 节${rem<=2?' ⚠️':''}`);
@@ -1256,6 +1376,7 @@ async function initApp() {
   renderStudentList();renderRecentLogs();refreshBoard();applyRoleUI();
   $$('.rating').forEach(slider=>{slider.addEventListener('input',(e)=>{const val=e.target.value;const d=e.target.closest('.rating-cell').querySelector('.rating-cell__val');if(d)d.textContent=val;});});
   $('#student-modal').addEventListener('click',(e)=>{if(e.target===$('#student-modal'))closeStudentModal();});
+  $('#detail-modal').addEventListener('click',(e)=>{if(e.target===$('#detail-modal'))closeDetailModal();});
 }
 // Start: check auth state
 checkAuth();

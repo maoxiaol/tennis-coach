@@ -19,7 +19,7 @@ app = Flask(__name__)
 CORS(app)
 
 # ====== 配置 ======
-PROVIDER = os.environ.get('AI_PROVIDER', 'gemini')  # 默认免费 Gemini
+PROVIDER = os.environ.get('AI_PROVIDER', 'qwen')  # 默认千问
 
 CONFIG = {
     'gemini': {

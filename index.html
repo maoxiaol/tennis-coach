@@ -579,7 +579,10 @@
         <div style="font-family:var(--font-display);font-size:28px;color:var(--green-d);letter-spacing:4px;" id="inviteCodeDisplay">-----</div>
       </div>
       <div class="stat-grid coach-only">
-        <div class="stat-card st--total"><div class="stat-num" id="stat-total">0</div><div class="stat-label">总学员数</div></div>
+        <div class="stat-card st--total" style="grid-column:1/-1;">
+          <div class="stat-label" style="margin-bottom:8px;">学员水平分布</div>
+          <div id="level-dist" style="display:flex;gap:4px;align-items:flex-end;height:48px;"></div>
+        </div>
         <div class="stat-card st--month"><div class="stat-num" id="stat-month">0</div><div class="stat-label">本月课时</div></div>
         <div class="stat-card st--avg"><div class="stat-num" id="stat-avg">—</div><div class="stat-label">综合均分</div></div>
         <div class="stat-card st--low"><div class="stat-num" id="stat-low">0</div><div class="stat-label">课时不足 ≤2</div></div>
@@ -1037,7 +1040,19 @@ function refreshBoard() {
   const now=new Date();const thisMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const monthLessons=DATA.lessons.filter(l=>l.date.startsWith(thisMonth)).length;
   const lowLesson=students.filter(s=>remaining(s)<=2).length;
-  $('#stat-total').textContent=students.length;$('#stat-month').textContent=monthLessons;
+  $('#stat-month').textContent=monthLessons;
+  // Level distribution chart
+  const levels = ['1.0','1.5','2.0','2.5','3.0','3.5','4.0','4.5','5.0'];
+  const counts = levels.map(l => students.filter(s => s.level === l).length);
+  const maxC = Math.max(...counts, 1);
+  const colors = ['#e8f5e9','#c8e6c9','#a5d6a7','#81c784','#66bb6a','#4caf50','#43a047','#388e3c','#2e7d32'];
+  $('#level-dist').innerHTML = levels.map((l,i) => {
+    const h = Math.max(counts[i]/maxC*44, counts[i]>0?6:2);
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+      <span style="font-size:10px;font-weight:600;color:${counts[i]>0?'#2c3e50':'#ccc'};">${counts[i]||''}</span>
+      <div style="width:100%;height:${h}px;background:${counts[i]>0?colors[i]:'#f0f0f0'};border-radius:3px 3px 0 0;min-height:2px;"></div>
+      <span style="font-size:9px;color:var(--muted);">${l}</span></div>`;
+  }).join('');
   if(students.length>0){const all=DATA.lessons.flatMap(l=>Object.values(l.ratings||{}));$('#stat-avg').textContent=all.length>0?(all.reduce((a,b)=>a+b,0)/all.length).toFixed(1):'—';}
   else $('#stat-avg').textContent='—';
   $('#stat-low').textContent=lowLesson;

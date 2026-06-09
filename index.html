@@ -368,6 +368,23 @@
     .role-btn { padding:6px 10px; font-size:11px; }
   }
 
+  /* ============ CALENDAR ============ */
+  .cal { background:var(--surface); border-radius:var(--radius-lg); border:1px solid var(--border); padding:12px; }
+  .cal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .cal-head button { border:none; background:var(--elevated); width:28px; height:28px; border-radius:50%; cursor:pointer; font-size:14px; color:var(--text); }
+  .cal-head .month { font-weight:700; font-size:14px; color:var(--text); }
+  .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; text-align:center; }
+  .cal-day-label { font-size:10px; color:var(--muted); padding:4px 0; }
+  .cal-day { font-size:13px; padding:6px 2px; border-radius:6px; cursor:default; color:var(--text-dim); position:relative; }
+  .cal-day.cur { color:var(--text); cursor:pointer; }
+  .cal-day.cur:hover { background:var(--elevated); }
+  .cal-day.today { font-weight:700; color:var(--green-d); }
+  .cal-day.has-lesson { background:var(--green-pale); color:var(--green-d); font-weight:600; border-radius:50%; }
+  .cal-day.has-lesson:hover { background:#c8e6c9; }
+  .cal-day.selected { background:var(--green); color:#fff; border-radius:50%; }
+  .cal-day.other { opacity:0.3; }
+  .cal-detail { margin-top:8px; padding:8px 10px; background:var(--elevated); border-radius:var(--radius-sm); font-size:12px; color:var(--text-dim); min-height:20px; }
+
   /* ============ LOGIN PAGE ============ */
   .login-page {
     min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -594,6 +611,7 @@
         </select>
         <div id="board-detail" style="margin-top:14px;"></div>
       </div>
+      <div id="calendar-area" style="margin-top:14px;"></div>
     </div>
 
   </div>
@@ -1070,6 +1088,7 @@ function renderBoard() {
   const cls=rem<=2?'low':'ok';
   detail.innerHTML=`<div class="board-header"><div class="avatar" style="background:${avatarColor(s.name)};width:42px;height:42px;font-size:20px;">${s.name[0]}</div><div class="board-header__info"><div class="board-header__name">${s.name}</div><div class="board-header__sub">${s.level} · ${s.type} · ${sLessons.length} 节课</div></div><div class="board-header__lessons"><div class="board-header__num ${cls}">${rem}</div><div style="font-size:10px;color:var(--muted);">剩余课时</div></div></div><div class="radar-container"><canvas id="radar" width="280" height="280"></canvas></div>${s.note?`<div style="font-size:12px;color:var(--muted);margin-top:8px;text-align:center;">📝 ${s.note}</div>`:''}`;
   setTimeout(()=>drawRadar(avg,dl,dims),60);
+  renderCalendar(studentId);
 }
 function drawRadar(ratings,labels,dims) {
   const canvas=document.getElementById('radar');if(!canvas)return;
@@ -1079,6 +1098,84 @@ function drawRadar(ratings,labels,dims) {
   ctx.beginPath();for(let i=0;i<n;i++){const val=parseFloat(ratings[dims[i]])||0,a=(Math.PI*2/n)*i-Math.PI/2,pr=r*Math.max(val,0.5)/10,x=cx+pr*Math.cos(a),y=cy+pr*Math.sin(a);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}ctx.closePath();
   ctx.fillStyle='rgba(46,204,113,0.12)';ctx.fill();ctx.strokeStyle='rgba(46,204,113,0.7)';ctx.lineWidth=2.5;ctx.shadowColor='rgba(46,204,113,0.25)';ctx.shadowBlur=10;ctx.stroke();ctx.shadowBlur=0;
   for(let i=0;i<n;i++){const val=parseFloat(ratings[dims[i]])||0,a=(Math.PI*2/n)*i-Math.PI/2,pr=r*Math.max(val,0.5)/10,x=cx+pr*Math.cos(a),y=cy+pr*Math.sin(a);ctx.beginPath();ctx.arc(x,y,5,0,Math.PI*2);ctx.fillStyle='rgba(46,204,113,0.2)';ctx.fill();ctx.beginPath();ctx.arc(x,y,3.2,0,Math.PI*2);ctx.fillStyle='#2ecc71';ctx.fill();const lx=cx+(r+24)*Math.cos(a),ly=cy+(r+24)*Math.sin(a);ctx.fillStyle='#2c3e50';ctx.font='600 11px "Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(`${labels[dims[i]]} ${val}`,lx,ly);}
+}
+
+// ==================== CALENDAR ====================
+function renderCalendar(studentId) {
+  const area = $('#calendar-area'); if (!area) return;
+  if (!studentId) { area.innerHTML=''; return; }
+  const now = new Date();
+  const year = now.getFullYear(), month = now.getMonth();
+  const lessons = DATA.lessons.filter(l => l.student_id === studentId);
+  const lessonDates = new Set(lessons.map(l => l.date));
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const dayLabels = ['日','一','二','三','四','五','六'];
+
+  let html = '<div class="cal">';
+  html += '<div class="cal-head"><button onclick="changeCalMonth(-1)">◀</button><span class="month">'+year+'年 '+(month+1)+'月</span><button onclick="changeCalMonth(1)">▶</button></div>';
+  html += '<div class="cal-grid">';
+  dayLabels.forEach(d => html += '<div class="cal-day-label">'+d+'</div>');
+  for (let i = 0; i < firstDay; i++) html += '<div class="cal-day other"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    let cls = 'cal-day cur';
+    if (d === now.getDate()) cls += ' today';
+    if (lessonDates.has(ds)) cls += ' has-lesson';
+    html += `<div class="${cls}" onclick="calDayClick('${ds}')">${d}</div>`;
+  }
+  html += '</div><div class="cal-detail" id="cal-detail">点击日期查看训练内容</div></div>';
+  area.innerHTML = html;
+  window._calYear = year; window._calMonth = month; window._calStudentId = studentId;
+}
+
+function changeCalMonth(delta) {
+  const y = window._calYear, m = window._calMonth + delta;
+  window._calYear = m < 0 ? y-1 : m > 11 ? y+1 : y;
+  window._calMonth = m < 0 ? 11 : m > 11 ? 0 : m;
+  renderCalendarMonth(window._calYear, window._calMonth, window._calStudentId);
+}
+
+function renderCalendarMonth(year, month, studentId) {
+  const area = $('#calendar-area'); if (!area) return;
+  const now = new Date();
+  const lessons = DATA.lessons.filter(l => l.student_id === studentId);
+  const lessonDates = new Set(lessons.map(l => l.date));
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+  const dayLabels = ['日','一','二','三','四','五','六'];
+  let html = '<div class="cal">';
+  html += '<div class="cal-head"><button onclick="changeCalMonth(-1)">◀</button><span class="month">'+year+'年 '+(month+1)+'月</span><button onclick="changeCalMonth(1)">▶</button></div>';
+  html += '<div class="cal-grid">';
+  dayLabels.forEach(d => html += '<div class="cal-day-label">'+d+'</div>');
+  for (let i = 0; i < firstDay; i++) html += '<div class="cal-day other"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const ds = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    let cls = 'cal-day cur';
+    if (d === now.getDate() && month === now.getMonth() && year === now.getFullYear()) cls += ' today';
+    if (lessonDates.has(ds)) cls += ' has-lesson';
+    html += `<div class="${cls}" onclick="calDayClick('${ds}')">${d}</div>`;
+  }
+  html += '</div><div class="cal-detail" id="cal-detail">点击日期查看训练内容</div></div>';
+  area.innerHTML = html;
+  window._calYear = year; window._calMonth = month; window._calStudentId = studentId;
+}
+
+function calDayClick(date) {
+  const studentId = window._calStudentId;
+  const lessons = DATA.lessons.filter(l => l.student_id === studentId && l.date === date);
+  const detail = $('#cal-detail');
+  if (!detail) return;
+  if (lessons.length === 0) { detail.textContent = '📅 '+date+' · 无训练记录'; return; }
+  detail.innerHTML = lessons.map(l => {
+    const dims = l.ratings ? Object.entries(l.ratings).filter(([,v]) => v>0) : [];
+    const dl = { forehand:'正手', backhand:'反手', serve:'发球', volley:'截击', footwork:'步伐', fitness:'体能' };
+    const tags = dims.map(([k,v]) => `<span class="skill-tag">${dl[k]||k} ${v}</span>`).join('');
+    return `📅 ${date} · ${l.content||'训练'} ${tags} ${l.note?'<br>📌 '+l.note:''}`;
+  }).join('<br>');
+  // Highlight selected date
+  $$('.cal-day.selected').forEach(el => el.classList.remove('selected'));
+  $$('.cal-day.has-lesson').forEach(el => { if (el.textContent == new Date(date).getDate()) el.classList.add('selected'); });
 }
 
 // ==================== INIT ====================

@@ -991,6 +991,18 @@ async function checkAuth() {
 let DATA = { students: [], lessons: [], journals: [] };
 let currentRole = 'coach';
 
+function switchTab(name) {
+  $$('.tab').forEach(t => t.classList.remove('active'));
+  const tab = document.querySelector('.tab[data-tab="' + name + '"]');
+  if (tab) tab.classList.add('active');
+  $$('.page').forEach(p => p.classList.remove('active'));
+  const page = document.getElementById('page-' + name);
+  if (page) page.classList.add('active');
+  if (name === 'board') refreshBoard();
+  if (name === 'ai') { if (_detailStudentId) loadVideos(_detailStudentId); else if (authUser && authUser.student) loadStudentVideos(authUser.student.id); }
+  if (name === 'lesson' && currentRole === 'student') { updateJournalSelects(); $('#journal-date').value = formatDate(new Date()); }
+}
+
 function coachFilter() {
   if (authUser && authUser.role === 'coach' && authUser.coach) {
     return '&coach_id=eq.' + authUser.coach.id;

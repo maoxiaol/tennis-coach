@@ -870,6 +870,11 @@ function $(sel) { return document.querySelector(sel); }
 function $$(sel) { return document.querySelectorAll(sel); }
 
 
+// ==================== HELPERS ====================
+function $(sel) { return document.querySelector(sel); }
+function $$(sel) { return document.querySelectorAll(sel); }
+
+
 // Login page tab switching
 $$('.login-tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -1057,6 +1062,8 @@ async function syncFromCloud() {
     const jRes = await api('GET', 'journals', null, 'select=*&order=id'+cf);
     DATA.journals = (jRes.data && !jRes.error) ? jRes.data : [];
     console.log('同步完成:', DATA.students.length, '学员');
+    const vRes = await api("GET", "videos", null, "select=*&order=id"+cf);
+    DATA.videos = (vRes.data && !vRes.error) ? vRes.data : [];
   } catch(e) {
     console.error('同步异常:', e.message);
     showToast('网络连接失败');
@@ -2416,5 +2423,4 @@ async function initApp() {
 }
 // Start: check auth state
 checkAuth();
-</script>
-</body>
+</script>

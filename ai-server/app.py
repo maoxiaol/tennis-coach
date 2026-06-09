@@ -48,33 +48,27 @@ CONFIG = {
 cfg = CONFIG[PROVIDER]
 API_KEY = cfg['key']
 
-PROMPT_TEMPLATE = """你是专业网球教练。分析这个网球训练视频的关键帧。
+PROMPT_TEMPLATE = """你是专业网球教练。请分析这段训练视频，用中文回复，格式如下：
 
-按以下JSON格式回复（不要markdown代码块，只返回纯JSON，不要任何额外文字）：
+【动作类型】判断这是什么动作（正手/反手/发球/截击/高压/对拉）
 
-{
-  "action_type": "正手击球/反手击球/发球/截击/高压球/其他",
-  "ratings": {
-    "forehand": 0,
-    "backhand": 0,
-    "serve": 0,
-    "volley": 0,
-    "footwork": 0,
-    "fitness": 0
-  },
-  "summary": "整体评价",
-  "details": "各维度详细技术分析",
-  "suggestions": ["具体改进建议1", "具体改进建议2"]
-}
+【评分】
+正手：X分
+反手：X分
+发球：X分
+截击：X分
+步伐：X分
+体能：X分
+（只评视频中出现的动作，未出现的写0分）
 
-要求：
-1. 先判断动作类型
-2. 只对视频中实际出现的动作维度评分(1-10)，未出现的维度填0
-3. 评分要有分析依据，写在details里
-4. 建议要具体可执行
-5. 如果判断是发球，重点关注serve维度
-6. 如果判断是正手/反手，重点关注对应维度
-7. 必须返回纯JSON，不要任何其他文字"""
+【详细分析】
+各维度具体评价
+
+【改进建议】
+2-3条可执行的建议
+
+【总结】
+一句话总结"""
 
 
 @app.route('/analyze', methods=['POST'])
@@ -122,33 +116,17 @@ def analyze():
         else:
             analysis = result['choices'][0]['message']['content']
 
-        # Try to parse JSON from AI response
-        try:
-            # Strip markdown code blocks
-            cleaned = analysis.strip()
-            if cleaned.startswith('\`\`\`'):
-                cleaned = cleaned.split('\n', 1)[1] if '\n' in cleaned else cleaned
-                if '\`\`\`' in cleaned:
-                    cleaned = cleaned.rsplit('\`\`\`', 1)[0]
-            cleaned = cleaned.strip()
+        # Parse structured text response
+        ratings = {}
+        import re
+        rating_pattern = re.compile(r'(正手|反手|发球|截击|步伐|体能)[：:]\s*(\d+)')
+        for m in rating_pattern.finditer(analysis):
+            dim_map = {'正手': 'forehand', '反手': 'backhand', '发球': 'serve', '截击': 'volley', '步伐': 'footwork', '体能': 'fitness'}
+            ratings[dim_map.get(m.group(1), m.group(1))] = int(m.group(2))
 
-            parsed = json.loads(cleaned)
-            # Validate structure
-            if isinstance(parsed, dict) and 'ratings' in parsed:
-                return jsonify({
-                    'ratings': parsed.get('ratings', {}),
-                    'summary': parsed.get('summary', ''),
-                    'details': parsed.get('details', analysis),
-                    'suggestions': parsed.get('suggestions', []),
-                    'action_type': parsed.get('action_type', '')
-                })
-        except (json.JSONDecodeError, Exception):
-            pass
-
-        # Fallback: return raw text
         return jsonify({
-            'ratings': None,
-            'summary': analysis[:200],
+            'ratings': ratings if ratings else None,
+            'summary': analysis[:300],
             'details': analysis,
             'suggestions': [],
             'action_type': ''

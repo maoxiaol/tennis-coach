@@ -119,7 +119,9 @@ def analyze():
             }, json=body, timeout=60)
 
         if resp.status_code != 200:
-            return jsonify({'error': f'AI API 错误: {resp.status_code} {resp.text[:200]}'}), 500
+            err_msg = resp.text[:300]
+            print(f"AI API Error: {resp.status_code} - {err_msg}", flush=True)
+            return jsonify({'error': f'AI API {resp.status_code}: {err_msg}'}), 500
 
         result = resp.json()
         if PROVIDER == 'gemini':

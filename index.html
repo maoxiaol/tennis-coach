@@ -1230,7 +1230,7 @@ async function uploadVideo() {
 }
 
 // AI Analysis - uses coach's own endpoint
-let aiEndpoint = localStorage.getItem('courtedge_ai_url') || '';
+let aiEndpoint = localStorage.getItem('courtedge_ai_url') || 'https://tennis-coach-ai-s646.onrender.com/analyze';
 
 function setAIEndpoint() {
   const url = prompt('请输入你的 AI 分析服务地址：\n（例如：https://your-server.com/analyze）', aiEndpoint);

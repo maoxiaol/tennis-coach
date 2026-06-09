@@ -48,18 +48,30 @@ CONFIG = {
 cfg = CONFIG[PROVIDER]
 API_KEY = cfg['key']
 
-PROMPT_TEMPLATE = """你是资深网球教练。你面前是同一个人的一段训练视频的连续关键帧。请仔细观察每帧画面的细节差异——身体角度、拍头位置、重心变化等。
+PROMPT_TEMPLATE = """你是专业网球教练。请分析这段训练视频，用中文回复。
 
-不要给出模板化回答。根据你实际看到的画面内容，给出针对性的分析。如果看不清楚，诚实说明。
+必须严格按照以下格式（每个部分都要有）：
 
-用中文回复，格式：
-【动作类型】你在画面中实际看到什么动作
-【关键观察】描述你从帧序列中观察到的2-3个具体技术细节（如：第3帧击球点时拍头滞后、转体角度约45度等）
-【评分】只评画面中看到的维度（1-10分）
-【改进建议】2条具体可操作的建议
-【总结】一句话"""
+【动作类型】判断这是什么动作（正手/反手/发球/截击/高压/对拉）
 
+【评分】
+评分格式必须为每行一个维度：
+正手：X分
+反手：X分
+发球：X分
+截击：X分
+步伐：X分
+体能：X分
+（只列出视频中出现的动作维度，不出现的不要写）
 
+【详细分析】
+各维度具体评价
+
+【改进建议】
+2-3条可执行的建议
+
+【总结】
+一句话总结"""
 @app.route('/analyze', methods=['POST'])
 def analyze():
     try:
@@ -99,6 +111,13 @@ def analyze():
         if resp.status_code != 200:
             err_msg = resp.text[:300]
             print(f"AI API Error: {resp.status_code} - {err_msg}", flush=True)
+
+        # Fallback: try flexible parsing if nothing found
+        if not ratings:
+            flex = re.findall(r'(正手|反手|发球|截击|步伐|体能|高压|对拉)[^\d]*(\d+)', analysis)
+            for m in flex:
+                dm = {"正手": "forehand", "反手": "backhand", "发球": "serve", "截击": "volley", "高压": "smash", "对拉": "rally", "步伐": "footwork", "体能": "fitness"}
+                ratings[dm.get(m[0], m[0])] = int(m[1])
             return jsonify({'error': f'AI API {resp.status_code}: {err_msg}'}), 500
 
         result = resp.json()
@@ -110,9 +129,9 @@ def analyze():
         # Parse structured text response
         ratings = {}
         import re
-        rating_pattern = re.compile(r'(正手|反手|发球|截击|步伐|体能)[：:]\s*(\d+)')
+        rating_pattern = re.compile(r'(正手|反手|发球|截击|步伐|体能|高压|对拉)[：\s]+(\d+)')
         for m in rating_pattern.finditer(analysis):
-            dim_map = {'正手': 'forehand', '反手': 'backhand', '发球': 'serve', '截击': 'volley', '步伐': 'footwork', '体能': 'fitness'}
+            dim_map = {'正手': 'forehand', '反手': 'backhand', '发球': 'serve', '截击': 'volley', '步伐': 'footwork', '体能': 'fitness', '高压': 'smash', '对拉': 'rally'}
             ratings[dim_map.get(m.group(1), m.group(1))] = int(m.group(2))
 
         return jsonify({

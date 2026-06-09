@@ -1009,7 +1009,7 @@ async function studentUploadVideo() {
     const sid = authUser.student.id;
     const fname = 'v_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const res = await fetch(`${SB_URL}/storage/v1/object/videos/${fname}`, {
-      method: 'POST', headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }, body: file
+      method: 'POST', headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }, body: (()=>{const fd=new FormData();fd.append('file',file);return fd;})()
     });
     if (!res.ok) { status.textContent = '上传失败'; return; }
     const url = `${SB_URL}/storage/v1/object/public/videos/${fname}`;
@@ -1191,10 +1191,12 @@ async function uploadVideo() {
   status.textContent = '上传中...';
   try {
     const fname = 'v_' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const formData = new FormData();
+    formData.append('file', file);
     const res = await fetch(`${SB_URL}/storage/v1/object/videos/${fname}`, {
       method: 'POST',
       headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY },
-      body: file
+      body: formData
     });
     if (!res.ok) { status.textContent = '上传失败'; return; }
     const url = `${SB_URL}/storage/v1/object/public/videos/${fname}`;
@@ -1314,7 +1316,7 @@ async function recordLesson() {
     try {
       const fname = 'v_' + Date.now() + '_' + videoFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
       await fetch(`${SB_URL}/storage/v1/object/videos/${fname}`, {
-        method: 'POST', headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }, body: videoFile
+        method: 'POST', headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY }, body: (()=>{const fd=new FormData();fd.append('file',videoFile);return fd;})()
       });
       const url = `${SB_URL}/storage/v1/object/public/videos/${fname}`;
       await api('POST', 'videos', {student_id:studentId, coach_id: authUser.coach ? authUser.coach.id : null, filename:fname, url, note:'课程视频', uploaded_by:'coach'});

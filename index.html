@@ -588,8 +588,8 @@
         <div class="stat-card st--low"><div class="stat-num" id="stat-low">0</div><div class="stat-label">课时不足 ≤2</div></div>
       </div>
       <div class="board-card">
-        <div style="font-size:13px;color:var(--text-dim);font-weight:600;margin-bottom:10px;">📈 选择学员，查看能力雷达图</div>
-        <select id="board-student" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--elevated);color:var(--text);font-size:14px;font-family:var(--font-body);" onchange="renderBoard()">
+        <div style="font-size:13px;color:var(--text-dim);font-weight:600;margin-bottom:10px;">📈 <span class="coach-only">选择学员，查看能力雷达图</span><span class="student-only" style="display:none;">我的能力雷达图</span></div>
+        <select id="board-student" onchange="renderBoard()" style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:var(--radius);background:var(--elevated);color:var(--text);font-size:14px;font-family:var(--font-body);">
           <option value="">-- 请选择学员 --</option>
         </select>
         <div id="board-detail" style="margin-top:14px;"></div>
@@ -865,16 +865,16 @@ function applyRoleUI() {
   $$('.coach-only').forEach(el=>el.style.display=isCoach?'':'none');
   $$('.student-only').forEach(el=>el.style.display=isCoach?'none':'');
   if(!isCoach) {
-    $('#student-select-card').style.display='';
-    $('#student-journal-form').style.display='';
-    $('#journal-date').value=formatDate(new Date());
-    updateJournalSelects();
-    // Auto-select logged-in student
-    if (authUser && authUser.student && authUser.student.id) {
-      $('#view-as-student').value = authUser.student.id;
-      $('#journal-student-select').value = authUser.student.id;
+    // Student view: auto-select self in all dropdowns
+    const sid = authUser && authUser.student ? authUser.student.id : null;
+    if (sid) {
+      $('#board-student').value = sid;
+      $('#view-as-student').value = sid;
+      $('#journal-student-select').value = sid;
+      renderBoard();
       renderStudentJournal();
     }
+    $('#journal-date').value=formatDate(new Date());
   }
   renderStudentList(); renderRecentLogs();
 }

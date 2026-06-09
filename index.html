@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -362,7 +362,42 @@
   .journal-text { font-size:14px; color:var(--text); margin-top:4px; line-height:1.7; }
 
   /* ============ RESPONSIVE ============ */
-  @media (max-width:400px) {
+  
+/* ============ DETAIL TABS (新增) ============ */
+.detail-tabs { display:flex; gap:4px; margin-bottom:14px; border-bottom:1px solid var(--border); }
+.detail-tab { flex:1; text-align:center; padding:8px 4px; font-size:12px; cursor:pointer; color:var(--muted); font-weight:500; border-bottom:2px solid transparent; transition:all 0.2s; }
+.detail-tab.active { color:var(--green-d); border-bottom-color:var(--green); font-weight:600; }
+.detail-panel { display:none; animation:fadeIn 0.25s ease; }
+.detail-panel.active { display:block; }
+.lesson-row { padding:8px 0; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+.lesson-row:last-child { border-bottom:none; }
+.lesson-row__date { font-size:11px; color:var(--muted); }
+.lesson-row__content { font-size:13px; color:var(--text); flex:1; margin:0 8px; }
+.lesson-row__ratings { display:flex; gap:2px; flex-wrap:wrap; justify-content:flex-end; }
+.lesson-row__ratings .mini-tag { font-size:9px; padding:1px 4px; border-radius:4px; background:var(--green-pale); color:var(--green-d); font-weight:600; }
+.empty-detail { text-align:center; padding:24px 0; color:var(--muted); font-size:13px; }
+.trend-container { display:flex; justify-content:center; padding:6px 0; }
+.trend-container canvas { max-width:100%; }
+.trend-legend { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-top:8px; }
+.trend-legend-item { display:flex; align-items:center; gap:4px; font-size:10px; color:var(--text-dim); }
+.trend-legend-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.assign-card { background:var(--elevated); border-radius:var(--radius); padding:12px; margin-bottom:8px; border:1px solid var(--border); }
+.assign-card.done { opacity:0.6; }
+.assign-head { display:flex; justify-content:space-between; align-items:flex-start; }
+.assign-title { font-weight:600; font-size:13px; color:var(--text); }
+.assign-date { font-size:10px; color:var(--muted); }
+.assign-desc { font-size:12px; color:var(--text-dim); margin-top:4px; line-height:1.6; }
+.assign-status { font-size:10px; padding:2px 8px; border-radius:6px; font-weight:600; }
+.assign-status.pending { background:var(--ball-pale); color:var(--ball); }
+.assign-status.done { background:var(--green-pale); color:var(--green-d); }
+.assign-done-btn { font-size:11px; color:var(--green); padding:4px 10px; border-radius:6px; border:1px solid var(--green); background:transparent; cursor:pointer; }
+.assign-done-btn:hover { background:var(--green-pale); }
+.student-radar-wrap { display:flex; justify-content:center; padding:6px 0; }
+.student-radar-wrap canvas { max-width:100%; }
+.student-lesson-item { padding:8px 12px; border-bottom:1px solid var(--border); font-size:12px; display:flex; justify-content:space-between; }
+.student-lesson-item:last-child { border-bottom:none; }
+
+@media (max-width:400px) {
     .header { padding:14px 14px 12px; }
     .logo-text { font-size:22px; }
     .content { padding:10px 12px; }
@@ -524,6 +559,17 @@
 
       <!-- Student: calendar + video + journal -->
       <div class="student-only" id="student-home" style="display:none;">
+        <div style="margin-bottom:14px;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;">📊 我的能力雷达图</div>
+          <div class="student-radar-wrap"><canvas id="student-radar" width="260" height="260"></canvas></div>
+        </div>
+        <div style="margin-bottom:14px;">
+          <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:8px;">📋 最近课程</div>
+          <div id="student-lesson-history" style="background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);"></div>
+        </div>
+        <div style="margin-bottom:10px;">
+          <button class="btn btn--sm btn--outline btn--block" onclick="openStudentHomework()">📝 我的作业</button>
+        </div>
         <div id="student-cal-area"></div>
         <div style="margin-top:14px;font-size:14px;font-weight:700;color:var(--text);">📹 我的训练视频</div>
         <div style="margin-bottom:8px;">
@@ -672,18 +718,50 @@
 
 <!-- Student Detail Modal -->
 <div class="modal-overlay" id="detail-modal">
-  <div class="modal">
+  <div class="modal" style="max-height:90vh;">
     <div class="modal__title" id="detail-name">学员详情</div>
-    <div id="detail-info" style="margin-bottom:16px;"></div>
-    <div style="font-size:13px;font-weight:700;color:var(--text-dim);margin-bottom:8px;">📹 训练视频</div>
-    <div id="detail-videos" style="margin-bottom:12px;"></div>
-    <div>
-      <input type="file" id="detail-video-file" accept="video/*" style="margin-bottom:8px;font-size:12px;">
-      <input type="text" id="detail-video-note" placeholder="视频备注（如：正手慢动作）" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font-body);margin-bottom:8px;">
-      <button class="btn btn--primary btn--sm" onclick="uploadVideo()">上传视频</button>
-      <span style="font-size:11px;color:var(--muted);margin-left:8px;" id="upload-status"></span>
+    <div id="detail-info" style="margin-bottom:12px;"></div>
+    <div class="detail-tabs">
+      <div class="detail-tab active" data-tab="lessons" onclick="switchDetailTab('lessons')">课程记录</div>
+      <div class="detail-tab" data-tab="trend" onclick="switchDetailTab('trend')">进步趋势</div>
+      <div class="detail-tab" data-tab="videos" onclick="switchDetailTab('videos')">视频</div>
+      <div class="detail-tab" data-tab="notes" onclick="switchDetailTab('notes')">笔记</div>
     </div>
-    <div style="margin-top:16px;"><button class="btn btn--outline btn--block" onclick="closeDetailModal()">关闭</button></div>
+    <div id="detail-lessons" class="detail-panel active"></div>
+    <div id="detail-trend" class="detail-panel"><div class="trend-container"><canvas id="trend-canvas" width="300" height="200"></canvas></div><div class="trend-legend" id="trend-legend"></div></div>
+    <div id="detail-videos" class="detail-panel"></div>
+    <div id="detail-notes" class="detail-panel"></div>
+    <div id="detail-video-actions" style="display:flex;gap:10px;justify-content:center;margin-top:8px;">
+      <button class="btn btn--sm btn--outline" onclick="chooseVideoForDetail()">上传视频</button>
+      <input type="file" id="detail-video-input" accept="video/*" style="display:none" onchange="uploadVideoForDetail(event)">
+    </div>
+    <div style="margin-top:14px;display:flex;gap:8px;">
+      <button class="btn btn--outline btn--block btn--sm" onclick="closeDetailModal()">关闭</button>
+      <button class="btn btn--primary btn--block btn--sm" id="assign-homework-btn" onclick="showAssignModal()">布置作业</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="modal-overlay" id="assign-modal">
+  <div class="modal">
+    <div class="modal__title">布置课后作业</div>
+    <div class="field"><label class="field-label">作业内容</label><textarea id="assign-content" placeholder="描述练习内容、次数、标准..."></textarea></div>
+    <div class="field"><label class="field-label">截止日期</label><input type="date" id="assign-due"></div>
+    <div class="modal__actions">
+      <button class="btn btn--outline btn--block" onclick="closeAssignModal()">取消</button>
+      <button class="btn btn--primary btn--block" onclick="saveAssignment()">布置</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="student-homework-modal">
+  <div class="modal">
+    <div class="modal__title">课后作业</div>
+    <div id="homework-list"></div>
+    <div class="modal__actions">
+      <button class="btn btn--outline btn--block" onclick="closeStudentHomework()">关闭</button>
+    </div>
   </div>
 </div>
 
@@ -1438,6 +1516,7 @@ function refreshBoard() {
   else $('#stat-avg').textContent='—';
   $('#stat-low').textContent=lowLesson;
   updateStudentSelects();renderBoard();
+  if (currentRole === 'student') { setTimeout(function() { drawStudentRadar(); renderStudentLessonHistory(); }, 100); }
 }
 function renderBoard() {
   const studentId=parseInt($('#board-student').value),detail=$('#board-detail');
@@ -1542,6 +1621,266 @@ function calDayClick(date) {
 }
 
 // ==================== INIT ====================
+
+// ==================== ENHANCED STUDENT DETAIL (新增) ====================
+function openStudentDetail(studentId) {
+  _detailStudentId = studentId;
+  var s = DATA.students.find(function(st) { return st.id === studentId; });
+  if (!s) { showToast('学员不存在'); return; }
+  document.getElementById('detail-name').textContent = s.name + ' · 详情';
+  document.getElementById('detail-info').innerHTML = '<div style="display:flex;align-items:center;gap:10px;">' +
+    '<div class="avatar" style="background:' + avatarColor(s.name) + ';width:40px;height:40px;font-size:18px;">' + s.name[0] + '</div>' +
+    '<div style="flex:1;"><div style="font-weight:600;">' + s.name + '</div>' +
+    '<div style="font-size:11px;color:var(--muted);">NTRP ' + s.level + ' · ' + s.type + (s.note ? ' · 📝 ' + s.note : '') + '</div></div>' +
+    '<div style="text-align:center;"><div style="font-size:28px;font-weight:600;color:' + (remaining(s)<=2?'var(--danger)':'var(--green-d)') + ';">' + remaining(s) + '</div>' +
+    '<div style="font-size:10px;color:var(--muted);">剩余 / ' + (s.total_lessons||s.lessons||0) + '节</div></div></div>';
+  switchDetailTab('lessons');
+  document.getElementById('detail-modal').classList.add('show');
+}
+
+function switchDetailTab(tab) {
+  var tabs = document.querySelectorAll('.detail-tab');
+  var panels = document.querySelectorAll('.detail-panel');
+  tabs.forEach(function(t) { t.classList.remove('active'); });
+  panels.forEach(function(p) { p.classList.remove('active'); });
+  tabs.forEach(function(t) { if (t.dataset.tab === tab) t.classList.add('active'); });
+  var panelId = tab === 'lessons' ? 'detail-lessons' : tab === 'trend' ? 'detail-trend' : tab === 'videos' ? 'detail-videos' : 'detail-notes';
+  var panel = document.getElementById(panelId);
+  if (panel) panel.classList.add('active');
+  if (tab === 'lessons') renderDetailLessons();
+  else if (tab === 'trend') renderDetailTrend();
+  else if (tab === 'videos') renderDetailVideos();
+  else if (tab === 'notes') renderDetailNotes();
+}
+
+function renderDetailLessons() {
+  var sid = _detailStudentId;
+  var sLessons = DATA.lessons.filter(function(l) { return l.student_id === sid; }).sort(function(a,b) { return b.id - a.id; });
+  var container = document.getElementById('detail-lessons');
+  if (sLessons.length === 0) { container.innerHTML = '<div class="empty-detail">还没有课程记录</div>'; return; }
+  var dl = {forehand:'正',backhand:'反',serve:'发',volley:'截',footwork:'步',fitness:'体'};
+  container.innerHTML = sLessons.map(function(l) {
+    var dims = l.ratings ? Object.keys(l.ratings).filter(function(k) { return l.ratings[k] > 0; }) : [];
+    var tags = dims.map(function(k) { return '<span class="mini-tag">' + (dl[k]||k) + l.ratings[k] + '</span>'; }).join('');
+    return '<div class="lesson-row"><span class="lesson-row__date">' + (l.date||'') + '</span>' +
+      '<span class="lesson-row__content">' + (l.content||'(仅评分)') + '</span>' +
+      '<span class="lesson-row__ratings">' + tags + '</span></div>' +
+      (l.note ? '<div style="font-size:11px;color:var(--clay);padding:0 0 6px 0;">📌 ' + l.note + '</div>' : '');
+  }).join('');
+}
+
+function renderDetailTrend() {
+  var sid = _detailStudentId;
+  var sLessons = DATA.lessons.filter(function(l) { return l.student_id === sid; }).sort(function(a,b) { return a.date.localeCompare(b.date); });
+  var container = document.getElementById('detail-trend');
+  if (sLessons.length < 2) {
+    container.innerHTML = '<div class="empty-detail">至少需要 2 节课才能绘制趋势图</div>';
+    return;
+  }
+  var dims = ['forehand','backhand','serve','volley','footwork','fitness'];
+  var labels = {forehand:'正手',backhand:'反手',serve:'发球',volley:'截击',footwork:'步伐',fitness:'体能'};
+  var colors = ['#2ecc71','#74b9ff','#e8895b','#f9a825','#a29bfe','#fd79a8'];
+  var dates = sLessons.map(function(l) { return l.date; });
+  var series = {};
+  dims.forEach(function(d) { series[d] = sLessons.map(function(l) { return (l.ratings||{})[d] || null; }); });
+  
+  setTimeout(function() {
+    var canvas = document.getElementById('trend-canvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    var W = 300, H = 200, pad = {t:15, r:15, b:30, l:30};
+    var cw = W - pad.l - pad.r, ch = H - pad.t - pad.b;
+    ctx.clearRect(0, 0, W, H);
+    for (var v = 0; v <= 10; v += 2) {
+      var y = pad.t + ch - (v/10)*ch;
+      ctx.beginPath(); ctx.moveTo(pad.l, y); ctx.lineTo(W-pad.r, y);
+      ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.lineWidth = 0.5; ctx.stroke();
+      ctx.fillStyle = '#94a3b8'; ctx.font = '9px sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText(v, pad.l-4, y+3);
+    }
+    ctx.fillStyle = '#94a3b8'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('评分', 12, pad.t+8);
+    var n = dates.length;
+    for (var i = 0; i < n; i++) {
+      var x = pad.l + (i/(Math.max(n-1,1)))*cw;
+      ctx.fillStyle = '#94a3b8'; ctx.font = '8px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(dates[i].substring(5), x, H-pad.b+12);
+      if (i > 0 && i < n-1 && n > 4) { i += Math.max(1, Math.floor(n/4)-1); }
+    }
+    dims.forEach(function(d, idx) {
+      var pts = series[d].map(function(v, i) {
+        if (v !== null && v !== undefined) return {x: pad.l + (i/(Math.max(n-1,1)))*cw, y: pad.t + ch - (v/10)*ch};
+        return null;
+      });
+      ctx.beginPath(); ctx.strokeStyle = colors[idx]; ctx.lineWidth = 2;
+      ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      var started = false;
+      pts.forEach(function(p) {
+        if (!p) { started = false; return; }
+        if (!started) { ctx.moveTo(p.x, p.y); started = true; }
+        else ctx.lineTo(p.x, p.y);
+      });
+      ctx.stroke();
+      pts.forEach(function(p) {
+        if (!p) return;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2);
+        ctx.fillStyle = colors[idx]; ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+      });
+    });
+    var legend = document.getElementById('trend-legend');
+    legend.innerHTML = dims.map(function(d, i) { return '<span class="trend-legend-item"><span class="trend-legend-dot" style="background:'+colors[i]+'"></span>' + labels[d] + '</span>'; }).join('');
+  }, 80);
+}
+
+function renderDetailVideos() {
+  var sid = _detailStudentId;
+  var vs = (DATA.videos||[]).filter(function(v) { return v.student_id === sid; });
+  var container = document.getElementById('detail-videos');
+  if (vs.length === 0) { container.innerHTML = '<div class="empty-detail">还没有视频</div>'; return; }
+  container.innerHTML = vs.map(function(v, i) {
+    return '<div class="log-item" style="padding:10px 0;"><div class="log-item__head"><span>🎬 视频 #' + (i+1) + '</span><span class="log-item__date">' + (v.created_at?v.created_at.substring(0,10):'') + '</span></div>' +
+    (v.note ? '<div class="log-item__note" style="font-size:11px;">' + v.note.substring(0,80) + '</div>' : '') +
+    '<div style="margin-top:4px;display:flex;gap:6px;"><button class="btn btn--sm btn--outline" onclick="playVideo('+v.id+')">▶ 播放</button>' +
+    '<button class="btn btn--sm btn--danger" onclick="deleteVideo('+v.id+')">✕ 删除</button></div></div>';
+  }).join('');
+}
+
+function renderDetailNotes() {
+  var sid = _detailStudentId;
+  var entries = (DATA.journals||[]).filter(function(j) { return j.student_id === sid; }).sort(function(a,b) { return b.id - a.id; });
+  var container = document.getElementById('detail-notes');
+  if (entries.length === 0) { container.innerHTML = '<div class="empty-detail">还没有训练笔记</div>'; return; }
+  container.innerHTML = entries.map(function(e) { return '<div class="journal-entry"><div class="journal-date">📅 ' + e.date + '</div><div class="journal-text">' + e.content + '</div></div>'; }).join('');
+}
+
+// ==================== STUDENT SELF-VIEW (新增) ====================
+function drawStudentRadar() {
+  if (currentRole !== 'student' || !authUser || !authUser.student) return;
+  var sid = authUser.student.id;
+  var sLessons = DATA.lessons.filter(function(l) { return l.student_id === sid; });
+  var dims = ['forehand','backhand','serve','volley','footwork','fitness'];
+  var labels = {forehand:'正手',backhand:'反手',serve:'发球',volley:'截击',footwork:'步伐',fitness:'体能'};
+  var avg = {};
+  dims.forEach(function(d) {
+    var vals = sLessons.map(function(l) { return (l.ratings||{})[d]; }).filter(function(v) { return v; });
+    avg[d] = vals.length ? (vals.reduce(function(a,b){return a+b;},0)/vals.length).toFixed(1) : 0;
+  });
+  var canvas = document.getElementById('student-radar');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var cx = 130, cy = 130, r = 100, n = dims.length;
+  ctx.clearRect(0, 0, 260, 260);
+  for (var lv = 2; lv <= 10; lv += 2) {
+    ctx.beginPath();
+    for (var i = 0; i < n; i++) { var a = (Math.PI*2/n)*i - Math.PI/2; var pr = r*lv/10; var x = cx + pr*Math.cos(a), y = cy + pr*Math.sin(a); i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+    ctx.closePath(); ctx.strokeStyle = lv === 10 ? 'rgba(0,0,0,0.12)' : 'rgba(0,0,0,0.05)'; ctx.lineWidth = lv === 10 ? 1 : 0.5; ctx.stroke();
+  }
+  for (var i = 0; i < n; i++) { var a = (Math.PI*2/n)*i - Math.PI/2; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + r*Math.cos(a), cy + r*Math.sin(a)); ctx.strokeStyle = 'rgba(0,0,0,0.06)'; ctx.stroke(); }
+  ctx.beginPath();
+  for (var i = 0; i < n; i++) { var val = parseFloat(avg[dims[i]])||0; var a = (Math.PI*2/n)*i - Math.PI/2; var pr = r * Math.max(val, 0.5)/10; var x = cx + pr*Math.cos(a), y = cy + pr*Math.sin(a); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); }
+  ctx.closePath(); ctx.fillStyle = 'rgba(46,204,113,0.12)'; ctx.fill(); ctx.strokeStyle = 'rgba(46,204,113,0.7)'; ctx.lineWidth = 2.5; ctx.stroke();
+  for (var i = 0; i < n; i++) { var val = parseFloat(avg[dims[i]])||0; var a = (Math.PI*2/n)*i - Math.PI/2; var pr = r * Math.max(val, 0.5)/10; var x = cx + pr*Math.cos(a), y = cy + pr*Math.sin(a); ctx.beginPath(); ctx.arc(x, y, 3.5, 0, Math.PI*2); ctx.fillStyle = '#2ecc71'; ctx.fill(); var lx = cx + (r + 20)*Math.cos(a), ly = cy + (r + 20)*Math.sin(a); ctx.fillStyle = '#2c3e50'; ctx.font = '600 10px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(labels[dims[i]] + ' ' + val, lx, ly); }
+}
+
+function renderStudentLessonHistory() {
+  if (currentRole !== 'student' || !authUser || !authUser.student) return;
+  var sid = authUser.student.id;
+  var sLessons = DATA.lessons.filter(function(l) { return l.student_id === sid; }).sort(function(a,b) { return b.id - a.id; }).slice(0, 10);
+  var container = document.getElementById('student-lesson-history');
+  if (!container) return;
+  if (sLessons.length === 0) { container.innerHTML = '<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px;">还没有课程记录</div>'; return; }
+  var dl = {forehand:'正手',backhand:'反手',serve:'发球',volley:'截击',footwork:'步伐',fitness:'体能'};
+  container.innerHTML = sLessons.map(function(l) {
+    var dims = l.ratings ? Object.keys(l.ratings).filter(function(k) { return l.ratings[k] > 0; }) : [];
+    var tags = dims.map(function(k) { return '<span class="skill-tag" style="font-size:9px;padding:1px 5px;">' + (dl[k]||k) + ' ' + l.ratings[k] + '</span>'; }).join('');
+    return '<div class="student-lesson-item"><span style="color:var(--muted);">' + (l.date||'') + '</span><span>' + (l.content||'') + '</span><span>' + tags + '</span></div>';
+  }).join('');
+}
+
+function renderStudentDashboard() {
+  setTimeout(function() { drawStudentRadar(); renderStudentLessonHistory(); }, 100);
+}
+
+// ==================== ASSIGNMENTS (新增) ====================
+function showAssignModal() {
+  var sid = _detailStudentId;
+  if (!sid) { showToast('请先选择学员'); return; }
+  document.getElementById('assign-content').value = '';
+  var today = new Date(); today.setDate(today.getDate() + 7);
+  document.getElementById('assign-due').value = today.toISOString().substring(0,10);
+  document.getElementById('assign-modal').classList.add('show');
+}
+function closeAssignModal() { document.getElementById('assign-modal').classList.remove('show'); }
+
+async function saveAssignment() {
+  var content_val = document.getElementById('assign-content').value.trim();
+  if (!content_val) { showToast('请输入作业内容'); return; }
+  var sid = _detailStudentId;
+  if (!sid) { showToast('学员错误'); return; }
+  var due = document.getElementById('assign-due').value || new Date().toISOString().substring(0,10);
+  showLoading(true);
+  try {
+    await api('POST', 'assignments', {
+      student_id: sid,
+      coach_id: authUser.coach ? authUser.coach.id : null,
+      content: content_val,
+      due_date: due,
+      status: 'pending',
+      created_at: new Date().toISOString()
+    });
+    await syncFromCloud();
+    closeAssignModal();
+    showToast('作业已布置 ✓');
+    renderDetailLessons();
+  } catch(e) { showToast('布置失败'); }
+  showLoading(false);
+}
+
+function openStudentHomework() {
+  if (!authUser || !authUser.student) return;
+  var sid = authUser.student.id;
+  var assigns = (DATA.assignments||[]).filter(function(a) { return a.student_id === sid; }).sort(function(a,b) { return a.status === 'pending' ? -1 : 1; });
+  var container = document.getElementById('homework-list');
+  if (assigns.length === 0) { container.innerHTML = '<div style="text-align:center;padding:24px;color:var(--muted);font-size:13px;">还没有作业 🎉</div>'; }
+  else {
+    container.innerHTML = assigns.map(function(a) {
+      return '<div class="assign-card' + (a.status === 'done' ? ' done' : '') + '">' +
+      '<div class="assign-head"><span class="assign-title">' + (a.content||'').substring(0,30) + ((a.content && a.content.length>30)?'...':'') + '</span>' +
+      '<span class="assign-status ' + (a.status === 'done' ? 'done' : 'pending') + '">' + (a.status === 'done' ? '✓ 已完成' : '⏳ 待完成') + '</span></div>' +
+      '<div class="assign-desc">' + (a.content||'') + '</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">' +
+      '<span class="assign-date">截止: ' + (a.due_date||'') + '</span>' +
+      (a.status !== 'done' ? '<button class="assign-done-btn" onclick="markAssignmentDone('+a.id+')">✓ 标记完成</button>' : '') +
+      '</div></div>';
+    }).join('');
+  }
+  document.getElementById('student-homework-modal').classList.add('show');
+}
+function closeStudentHomework() { document.getElementById('student-homework-modal').classList.remove('show'); }
+
+async function markAssignmentDone(id) {
+  if (!confirm('确认完成这个作业？')) return;
+  try {
+    await api('PATCH', 'assignments', {status: 'done', completed_at: new Date().toISOString()}, 'id=eq.'+id);
+    await syncFromCloud();
+    openStudentHomework();
+    showToast('🎉 作业已完成！');
+  } catch(e) { showToast('操作失败'); }
+}
+
+function playVideo(vid) {
+  var v = DATA.videos.find(function(vi) { return vi.id === vid; });
+  if (!v) return;
+  var url = v.url || (v.filename ? SB_URL + '/storage/v1/object/videos/' + v.filename : '');
+  if (url) window.open(url, '_blank');
+  else showToast('视频地址不可用');
+}
+
+function onStudentCardClick(studentId) {
+  openStudentDetail(studentId);
+}
+
 async function initApp() {
   showLoading(true);
   await syncFromCloud();
@@ -1549,6 +1888,7 @@ async function initApp() {
   $('#lesson-date').value=formatDate(new Date());
   $('#journal-date').value=formatDate(new Date());
   renderStudentList();renderRecentLogs();refreshBoard();applyRoleUI();
+  if (authUser && authUser.role === 'student') { setTimeout(function() { drawStudentRadar(); renderStudentLessonHistory(); }, 300); }
   $$('.rating').forEach(slider=>{slider.addEventListener('input',(e)=>{const val=e.target.value;const d=e.target.closest('.rating-cell').querySelector('.rating-cell__val');if(d)d.textContent=val;});});
   $('#student-modal').addEventListener('click',(e)=>{if(e.target===$('#student-modal'))closeStudentModal();});
   $('#detail-modal').addEventListener('click',(e)=>{if(e.target===$('#detail-modal'))closeDetailModal();});
@@ -1558,3 +1898,4 @@ checkAuth();
 </script>
 </body>
 </html>
+

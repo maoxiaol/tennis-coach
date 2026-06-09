@@ -11,7 +11,8 @@
 """
 
 from flask import Flask, request, jsonify
-from flask_cors import CORS\nimport json
+from flask_cors import CORS
+import json
 import requests
 import os
 
